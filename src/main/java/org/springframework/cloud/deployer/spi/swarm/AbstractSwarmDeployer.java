@@ -7,6 +7,7 @@ import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -31,7 +32,7 @@ public class AbstractSwarmDeployer {
 
     protected Map<String, String> createIdMap(String appId, AppDeploymentRequest request, Integer instanceIndex) {
         //TODO: handling of app and group ids
-        Map<String, String> map = new HashMap<>();
+        Map<String, String> map = new HashMap<String, String>();
         map.put(SPRING_APP_KEY, appId);
         String groupId = request.getDeploymentProperties().get(AppDeployer.GROUP_PROPERTY_KEY);
         if (groupId != null) {
@@ -55,15 +56,9 @@ public class AbstractSwarmDeployer {
         return deploymentId.replace('.', '-');
     }
 
-    protected AppStatus buildAppStatus(SwarmDeployerProperties properties, String id, NodeList list) {
+    protected AppStatus buildAppStatus(SwarmDeployerProperties properties, String id) {
         AppStatus.Builder statusBuilder = AppStatus.of(id);
-        if (list == null) {
-            statusBuilder.with(new SwarmAppInstanceStatus(id, null, properties));
-        } else {
-            for (Node node : list.getItems()) {
-                statusBuilder.with(new SwarmAppInstanceStatus(id, node, properties));
-            }
-        }
+        statusBuilder.with(new SwarmAppInstanceStatus(id, null));
         return statusBuilder.build();
     }
 
