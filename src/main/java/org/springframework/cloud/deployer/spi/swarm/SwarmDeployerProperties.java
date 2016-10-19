@@ -23,5 +23,15 @@ public class SwarmDeployerProperties {
         return this.URI;
     }
 
+    private String[] environmentVariables = new String[]{};
+
+
+    public String[] getEnvironmentVariables() {
+        return environmentVariables;
+    }
+
+    public void setEnvironmentVariables(String[] environmentVariables) {
+        this.environmentVariables = environmentVariables;
+    }
 
 }

@@ -56,9 +56,11 @@ public class AbstractSwarmDeployer {
         return deploymentId.replace('.', '-');
     }
 
-    protected AppStatus buildAppStatus(SwarmDeployerProperties properties, String id) {
-        AppStatus.Builder statusBuilder = AppStatus.of(id);
-        statusBuilder.with(new SwarmAppInstanceStatus(id, null));
+
+    protected AppStatus buildAppStatus(SwarmDeployerProperties properties, String appId) {
+        AppStatus.Builder statusBuilder = AppStatus.of(appId);
+
+        statusBuilder.with(new SwarmAppInstanceStatus(properties, appId));
         return statusBuilder.build();
     }
 

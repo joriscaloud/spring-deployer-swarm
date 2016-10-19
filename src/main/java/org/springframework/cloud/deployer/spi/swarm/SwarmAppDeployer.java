@@ -154,6 +154,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
     public AppStatus status(String appId) {
         Map<String, String> selector = new HashMap<>();
         selector.put(SPRING_APP_KEY, appId);
+
         if (logger.isDebugEnabled()) {
             logger.debug("Building AppStatus for app: {}", appId);
 

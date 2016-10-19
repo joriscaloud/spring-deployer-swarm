@@ -1,11 +1,11 @@
 package org.springframework.cloud.deployer.spi.swarm;
 
-import com.spotify.docker.client.messages.Container;
-import com.spotify.docker.client.messages.ContainerInfo;
-import com.spotify.docker.client.messages.ContainerState;
+import com.spotify.docker.client.messages.swarm.ContainerStatus;
+import com.spotify.docker.client.messages.swarm.Task;
 import com.spotify.docker.client.messages.swarm.TaskStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cloud.deployer.spi.app.AppInstanceStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 
 import java.util.HashMap;
@@ -14,35 +14,37 @@ import java.util.Map;
 /**
  * Created by joriscaloud on 13/10/16.
  */
-public class SwarmAppInstanceStatus {
+public class SwarmAppInstanceStatus implements AppInstanceStatus {
 
     private static Logger logger = LoggerFactory.getLogger(SwarmAppInstanceStatus.class);
-    private final String moduleId;
     private SwarmDeployerProperties properties;
-    private Container container;
-    private ContainerState containerState;
     private TaskStatus taskStatus;
-    private ContainerInfo containerInfo;
+    private ContainerStatus containerStatus;
+    private Task task;
+    private String appId;
 
-    public SwarmAppInstanceStatus(String moduleId, SwarmDeployerProperties properties, TaskStatus taskStatus) {
-        this.moduleId = moduleId;
+    public SwarmAppInstanceStatus(SwarmDeployerProperties properties, String appId) {
         this.properties = properties;
-        this.taskStatus = taskStatus;
-        // we assume one container per pod
-        }
-
-    public String getId() {
-        return String.format("%s:%s", moduleId);
+        this.appId = appId;
+        this.task = task;
+        this.taskStatus = task.status();
+        this.containerStatus = taskStatus.containerStatus();
+    }
+    public Task getTaskFromAppId(String appId) {
 
     }
 
+    public String getId() {
+        return String.format("%s:%s", containerStatus.containerID());
+    }
+
     public DeploymentState getState() {
-        return taskStatus.containerStatus() != null ? mapState() : DeploymentState.unknown;
+        return taskStatus != null ? mapState() : DeploymentState.unknown;
     }
 
 
     /**
-     * Maps Kubernetes phases/states onto Spring Cloud Deployer states
+     * Maps SWARM phases/states onto Spring Cloud Deployer states
      */
     private DeploymentState mapState() {
         logger.debug("{} - ContainerStatus [ {} ]", taskStatus.containerStatus());
@@ -71,14 +73,14 @@ public class SwarmAppInstanceStatus {
     public Map<String, String> getAttributes() {
         Map<String, String> result = new HashMap<>();
 
-        if (containerInfo.state() != null) {
-            result.put("container_restart_count", "" + containerInfo.restartCount());
-            if (containerInfo.state() != null && containerInfo.state().exitCode() != null) {
-                result.put("container_last_termination_exit_code", "" + containerInfo.state().exitCode());
-                result.put("container_last_termination_reason", containerInfo.state().status());
-            }
-        }
+        if (containerStatus != null) {
+            result.put("container_id", containerStatus.containerID());
 
+        }
+;
+        if (taskStatus != null && containerStatus.exitCode() != null) {
+            result.put("container_last_termination_exit_code", "" + containerStatus.exitCode());
+        }
         return result;
     }
 
