@@ -6,6 +6,7 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.SpringApplicationConfiguration;
+import org.springframework.cloud.deployer.resource.docker.DockerResource;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
@@ -44,7 +45,6 @@ public class SwarmAppDeployerTest extends AbstractAppDeployerIntegrationTests {
         log.info("Testing {}...", "a simple deployment with the swarm");
         SwarmDeployerProperties swarmProperties = new SwarmDeployerProperties();
         SwarmAppDeployer swarmAppDeployer = new SwarmAppDeployer(swarmProperties, sut);
-
         AppDefinition definition = new AppDefinition(randomName(), null);
         Resource resource = integrationTestProcessor();
         AppDeploymentRequest request = new AppDeploymentRequest(definition, resource);
@@ -60,6 +60,10 @@ public class SwarmAppDeployerTest extends AbstractAppDeployerIntegrationTests {
         swarmAppDeployer.undeploy(deploymentId);
         assertThat(deploymentId, eventually(hasStatusThat(
                 Matchers.<AppStatus>hasProperty("state", is(unknown))), timeout.maxAttempts, timeout.pause));
+    }
+
+    protected Resource integrationTestProcessor() {
+        return new DockerResource("springcloud/spring-cloud-deployer-spi-test-app:latest");
     }
 
 }

@@ -1,14 +1,7 @@
 package org.springframework.cloud.deployer.spi.swarm;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.spotify.docker.client.DefaultDockerClient;
-import com.spotify.docker.client.messages.Container;
-import com.spotify.docker.client.messages.ContainerConfig;
-import com.spotify.docker.client.messages.ContainerCreation;
-import com.spotify.docker.client.messages.ContainerInfo;
 import com.spotify.docker.client.messages.ServiceCreateOptions;
-import com.spotify.docker.client.messages.ServiceCreateResponse;
 import com.spotify.docker.client.messages.swarm.ContainerSpec;
 import com.spotify.docker.client.messages.swarm.Driver;
 import com.spotify.docker.client.messages.swarm.EndpointSpec;
@@ -19,16 +12,10 @@ import com.spotify.docker.client.messages.swarm.ServiceMode;
 import com.spotify.docker.client.messages.swarm.ServiceSpec;
 import com.spotify.docker.client.messages.swarm.Swarm;
 import com.spotify.docker.client.messages.swarm.TaskSpec;
-import com.sun.xml.internal.ws.wsdl.writer.document.Port;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
-import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
-import org.springframework.cloud.deployer.spi.task.TaskStatus;
-import org.springframework.util.Assert;
 
-import javax.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Created by joriscaloud on 13/10/16.
  */
-public class SwarmTaskLauncher extends AbstractSwarmDeployer implements TaskLauncher {
+public abstract class SwarmTaskLauncher extends AbstractSwarmDeployer implements TaskLauncher {
 
     private SwarmDeployerProperties properties = new SwarmDeployerProperties();
 
@@ -54,7 +41,7 @@ public class SwarmTaskLauncher extends AbstractSwarmDeployer implements TaskLaun
         this.properties = properties;
         this.swarm = swarm;
     }
-
+/*
     @Override
     public String launch(AppDeploymentRequest request) {
         String appId = createDeploymentId(request);
@@ -90,7 +77,9 @@ public class SwarmTaskLauncher extends AbstractSwarmDeployer implements TaskLaun
         logger.debug("Deleting job: {}", id);
         deleteSwarmContainer(id);
     }
+    */
 
+    /*
     @Override
     public TaskStatus status(String id) {
         Map<String, String> selector = new HashMap<>();
@@ -102,7 +91,7 @@ public class SwarmTaskLauncher extends AbstractSwarmDeployer implements TaskLaun
 
         return status;
     }
-
+    */
 
     public void createSwarmService(ServiceSpec serviceSpec) throws Exception {
         dockerClient.createService(serviceSpec, new ServiceCreateOptions());
@@ -233,13 +222,6 @@ public class SwarmTaskLauncher extends AbstractSwarmDeployer implements TaskLaun
         cmdArgs.addAll(request.getCommandlineArguments());
         logger.debug("Using command args: " + cmdArgs);
         return cmdArgs;
-    }
-
-    private void deleteSwarmContainer(String containerId) throws Exception {
-        try {
-            if (resource().path("containers").path(containerId) != null)
-
-        }
     }
 
 }

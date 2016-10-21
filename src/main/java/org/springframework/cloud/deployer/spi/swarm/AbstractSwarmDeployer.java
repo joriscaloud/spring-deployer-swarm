@@ -52,7 +52,6 @@ public class AbstractSwarmDeployer {
         else {
             deploymentId = String.format("%s-%s", groupId, request.getDefinition().getName());
         }
-        // Kubernetes does not allow . in the name
         return deploymentId.replace('.', '-');
     }
 
@@ -60,7 +59,7 @@ public class AbstractSwarmDeployer {
     protected AppStatus buildAppStatus(SwarmDeployerProperties properties, String appId) {
         AppStatus.Builder statusBuilder = AppStatus.of(appId);
 
-        statusBuilder.with(new SwarmAppInstanceStatus(properties, appId));
+        statusBuilder.with(new SwarmAppInstanceStatus(properties, appId, null));
         return statusBuilder.build();
     }
 

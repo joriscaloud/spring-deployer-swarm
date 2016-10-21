@@ -18,24 +18,25 @@ public class SwarmAppInstanceStatus implements AppInstanceStatus {
 
     private static Logger logger = LoggerFactory.getLogger(SwarmAppInstanceStatus.class);
     private SwarmDeployerProperties properties;
+    private Task task;
     private TaskStatus taskStatus;
     private ContainerStatus containerStatus;
-    private Task task;
     private String appId;
 
-    public SwarmAppInstanceStatus(SwarmDeployerProperties properties, String appId) {
+    public SwarmAppInstanceStatus(SwarmDeployerProperties properties, String appId, Task task) {
         this.properties = properties;
         this.appId = appId;
         this.task = task;
-        this.taskStatus = task.status();
-        this.containerStatus = taskStatus.containerStatus();
-    }
-    public Task getTaskFromAppId(String appId) {
+        if (task != null) {
 
+            this.taskStatus = task.status();
+            this.containerStatus = taskStatus.containerStatus();
+        }
     }
+
 
     public String getId() {
-        return String.format("%s:%s", containerStatus.containerID());
+        return String.format("%s", appId);
     }
 
     public DeploymentState getState() {

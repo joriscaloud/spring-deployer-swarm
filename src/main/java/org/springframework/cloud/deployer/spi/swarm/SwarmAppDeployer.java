@@ -3,7 +3,11 @@ package org.springframework.cloud.deployer.spi.swarm;
 import com.spotify.docker.client.DefaultDockerClient;
 import com.spotify.docker.client.exceptions.DockerCertificateException;
 import com.spotify.docker.client.exceptions.DockerException;
+import com.spotify.docker.client.messages.ServiceCreateOptions;
+import com.spotify.docker.client.messages.ServiceCreateResponse;
 import com.spotify.docker.client.messages.swarm.ContainerSpec;
+import com.spotify.docker.client.messages.swarm.EndpointSpec;
+import com.spotify.docker.client.messages.swarm.PortConfig;
 import com.spotify.docker.client.messages.swarm.Service;
 import com.spotify.docker.client.messages.swarm.ServiceMode;
 import com.spotify.docker.client.messages.swarm.ServiceSpec;
@@ -14,6 +18,7 @@ import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
@@ -50,9 +55,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
             if (!status.getState().equals(DeploymentState.unknown)) {
                 throw new IllegalStateException(String.format("App '%s' is already deployed", appId));
             }
-
             int externalPort = configureExternalPort(request);
-
             String countProperty = request.getDeploymentProperties().get(COUNT_PROPERTY_KEY);
             int count = (countProperty != null) ? Integer.parseInt(countProperty) : 1;
 
@@ -63,16 +66,16 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
             String indexedProperty = request.getDeploymentProperties().get(INDEXED_PROPERTY_KEY);
             boolean indexed = (indexedProperty != null) && Boolean.valueOf(indexedProperty);
 
-            if (indexed) {
+            try {
+                final DefaultDockerClient.Builder builder = DefaultDockerClient.fromEnv();
+                dockerEndpoint = builder.uri();
+                client = builder.build();
+            }
+            catch (DockerCertificateException e) {
+                logger.error(e.getMessage(), e);
+            }
 
-                try {
-                    final DefaultDockerClient.Builder builder = DefaultDockerClient.fromEnv();
-                    dockerEndpoint = builder.uri();
-                    client = builder.build();
-                }
-                catch (DockerCertificateException e) {
-                    logger.error(e.getMessage(), e);
-                }
+            if (indexed) {
 
 
                 for (int index=0 ; index < count ; index++) {
@@ -81,16 +84,22 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
                     Map<String, String> idMap = createIdMap(appId, request, index);
                     logger.debug("Creating service: {} on {} with index {}", appId, externalPort, index);
                     //creation of the swarm service with all its specificities
-                    final ServiceSpec serviceSpec = createSwarmServiceSpec(appId, HELLOWORLD, commands, 1);
+                    final ServiceSpec serviceSpec = createSwarmServiceSpec(appId, request, idMap, commands, 1, externalPort);
                 }
             }
-            else {
+            else try {
                 Map<String, String> idMap = createIdMap(appId, request, null);
                 logger.debug("Creating service: {} on {}", appId, externalPort);
-                final ServiceSpec serviceSpec = createSwarmServiceSpec(appId, HELLOWORLD, commands, count);
+                final ServiceSpec serviceSpec = createSwarmServiceSpec(appId, request, idMap, commands, count, externalPort);
+                final ServiceCreateResponse response = client.createService(serviceSpec, new ServiceCreateOptions());
+
+            }
+            catch (DockerException |InterruptedException e) {
+                e.printStackTrace();
             }
 
             return appId;
+
         } catch (RuntimeException e) {
             logger.error(e.getMessage(), e);
             throw e;
@@ -104,17 +113,12 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
         final int timeToWait = 10;
 
         try {
-
-
             List<Service> services =
                     client.listServices(Service.find().withServiceName(appId).build());
-
             for (Service rc : services) {
                 String appIdToDelete = rc.id();
                 logger.debug("Deleting service for : {}", appIdToDelete);
-
                 client.stopContainer(appIdToDelete, timeToWait);
-
             }
         }
         catch (DockerException | InterruptedException e) {
@@ -123,19 +127,32 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
     }
 
 
-    private ServiceSpec createSwarmServiceSpec(String serviceName, String imageName, String[] commands, int replicas) {
-        final TaskSpec taskSpec = TaskSpec
-                .builder()
-                .withContainerSpec(ContainerSpec.builder().withImage(imageName)
-                        .withCommands(commands)
-                        .build())
-                .build();
+    private ServiceSpec createSwarmServiceSpec(String serviceName, AppDeploymentRequest request, Map<String, String> idMap,
+                                               String[] commands, int replicas, int externalPort) {
+        String image = null;
+        try {
+            image = request.getResource().getURI().getSchemeSpecificPart();
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Unable to get URI for " + request.getResource(), e);
+        }
+        final TaskSpec taskSpec = TaskSpec.builder()
+                                    .withContainerSpec(ContainerSpec.builder()
+                                            .withImage(image)
+                                            .build())
+                                        .build();
 
         final ServiceMode serviceMode = ServiceMode.withReplicas(replicas);
 
-        return ServiceSpec.builder().withName(serviceName).withTaskTemplate(taskSpec)
-                .withServiceMode(serviceMode)
-                .build();
+        ServiceSpec service = ServiceSpec.builder()
+                    .withLabels(idMap)
+                    .withName(serviceName)
+                    .withTaskTemplate(taskSpec)
+                    .withServiceMode(serviceMode)
+                    .withEndpointSpec(addEndPointSpec(externalPort))
+                    .build();
+
+
+        return service;
     }
 
 
@@ -145,7 +162,6 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
         if (parameters.containsKey(SERVER_PORT_KEY)) {
             externalPort = Integer.valueOf(parameters.get(SERVER_PORT_KEY));
         }
-
         return externalPort;
     }
 
@@ -154,16 +170,31 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
     public AppStatus status(String appId) {
         Map<String, String> selector = new HashMap<>();
         selector.put(SPRING_APP_KEY, appId);
-
         if (logger.isDebugEnabled()) {
             logger.debug("Building AppStatus for app: {}", appId);
-
         }
         AppStatus status = buildAppStatus(properties, appId);
         logger.debug("Status for app: {} is {}", appId, status);
-
         return status;
     }
 
+    private EndpointSpec addEndPointSpec(int port) {
+        return EndpointSpec.builder()
+                .withPorts(new PortConfig[]{createSwarmContainerPortConfig(port)})
+                .build();
+
+    }
+
+    public PortConfig createSwarmContainerPortConfig(Integer port) {
+        PortConfig portConfig = new PortConfig();
+        if (port != null) {
+            portConfig = PortConfig.builder()
+                    .withPublishedPort(port)
+                    .withTargetPort(port)
+                    .withProtocol("tcp")
+                    .build();
+        }
+        return portConfig;
+    }
 }
 
