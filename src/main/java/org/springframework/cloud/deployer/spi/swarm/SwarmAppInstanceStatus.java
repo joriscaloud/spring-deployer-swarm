@@ -22,6 +22,7 @@ public class SwarmAppInstanceStatus implements AppInstanceStatus {
     private TaskStatus taskStatus;
     private ContainerStatus containerStatus;
     private String appId;
+    private DeploymentState deploymentState;
 
     public SwarmAppInstanceStatus(SwarmDeployerProperties properties, String appId, Task task) {
         this.properties = properties;
@@ -32,8 +33,9 @@ public class SwarmAppInstanceStatus implements AppInstanceStatus {
             this.taskStatus = task.status();
             this.containerStatus = taskStatus.containerStatus();
         }
-    }
+        this.deploymentState = getState();
 
+    }
 
     public String getId() {
         return String.format("%s", appId);
@@ -49,7 +51,7 @@ public class SwarmAppInstanceStatus implements AppInstanceStatus {
      */
     private DeploymentState mapState() {
         logger.debug("{} - ContainerStatus [ {} ]", taskStatus.containerStatus());
-        switch (taskStatus.state()) {
+        switch (task.status().state()) {
 
             case TaskStatus.TASK_STATE_PENDING:
                 return DeploymentState.deploying;
@@ -64,6 +66,12 @@ public class SwarmAppInstanceStatus implements AppInstanceStatus {
                 return DeploymentState.undeployed;
 
             case TaskStatus.TASK_STATE_COMPLETE:
+                return DeploymentState.deployed;
+
+            case TaskStatus.TASK_STATE_RUNNING:
+                return DeploymentState.deployed;
+
+            case TaskStatus.TASK_STATE_ALLOCATED:
                 return DeploymentState.deployed;
 
             default:

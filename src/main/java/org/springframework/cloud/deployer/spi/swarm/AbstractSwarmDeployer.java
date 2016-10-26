@@ -1,6 +1,7 @@
 package org.springframework.cloud.deployer.spi.swarm;
 
 
+import com.spotify.docker.client.messages.swarm.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
@@ -56,12 +57,11 @@ public class AbstractSwarmDeployer {
     }
 
 
-    protected AppStatus buildAppStatus(SwarmDeployerProperties properties, String appId) {
+    protected AppStatus buildAppStatus(SwarmDeployerProperties properties, String appId, Task task) {
         AppStatus.Builder statusBuilder = AppStatus.of(appId);
 
-        statusBuilder.with(new SwarmAppInstanceStatus(properties, appId, null));
+        statusBuilder.with(new SwarmAppInstanceStatus(properties, appId, task));
         return statusBuilder.build();
     }
-
 
 }

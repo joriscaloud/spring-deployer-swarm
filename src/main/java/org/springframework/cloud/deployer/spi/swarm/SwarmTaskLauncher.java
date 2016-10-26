@@ -202,7 +202,7 @@ public abstract class SwarmTaskLauncher extends AbstractSwarmDeployer implements
             portConfig = PortConfig.builder()
                     .withPublishedPort(port)
                     .withTargetPort(port)
-                    .withProtocol("tcp")
+                    .withProtocol("http")
                     .build();
         }
         return portConfig;
@@ -223,5 +223,6 @@ public abstract class SwarmTaskLauncher extends AbstractSwarmDeployer implements
         logger.debug("Using command args: " + cmdArgs);
         return cmdArgs;
     }
+    //TODO
 
 }
