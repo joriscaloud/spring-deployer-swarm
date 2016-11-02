@@ -1,6 +1,7 @@
 package org.springframework.cloud.deployer.spi.swarm;
 
 import com.spotify.docker.client.DockerClient;
+import com.spotify.docker.client.messages.swarm.TaskStatus;
 import org.hamcrest.Matchers;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,17 +42,30 @@ public class SwarmAppDeployerTest extends AbstractAppDeployerIntegrationTests {
         AppDeploymentRequest request = new AppDeploymentRequest(definition, resource);
         log.info("Deploying {}...", request.getDefinition().getName());
         String deploymentId =  swarmAppDeployer.deploy(request);
-        AppStatus appStatus = swarmAppDeployer.getAppStatus();
-        String containerId = swarmAppDeployer.getResponse().id();
         Timeout timeout = deploymentTimeout();
 
-        assertThat(appStatus.getState(), eventually(is(Matchers.<DeploymentState>is(DeploymentState.deployed)), timeout.maxAttempts, timeout.pause));
+        long t= System.currentTimeMillis();
+        long end = t+15000;
+        while(System.currentTimeMillis() < end) {
+            if (swarmAppDeployer.getCreatedTask().status().state().equals(TaskStatus.TASK_STATE_RUNNING)) {
+                AppStatus appStatus = swarmAppDeployer.status(deploymentId, swarmAppDeployer.getCreatedTask());
+                assertThat(appStatus.getState(), eventually(is(Matchers.<DeploymentState>is(DeploymentState.deployed)), timeout.maxAttempts, timeout.pause));
+            }
+            else log.info("was not deployed or assert did not work");
+
+        }
 
         log.info("Undeploying {}...", deploymentId);
         timeout = undeploymentTimeout();
-        swarmAppDeployer.undeploy(deploymentId);
-        assertThat(appStatus.getState(), eventually(is(
-                Matchers.<DeploymentState>is(DeploymentState.undeployed)), timeout.maxAttempts, timeout.pause));
+        swarmAppDeployer.undeployService(deploymentId);
+        while(System.currentTimeMillis() < end) {
+            if (swarmAppDeployer.getCreatedTask().status().state().equals(TaskStatus.TASK_STATE_SHUTDOWN)) {
+                AppStatus appStatus = swarmAppDeployer.status(deploymentId, swarmAppDeployer.getCreatedTask());
+                assertThat(appStatus.getState(), eventually(is(Matchers.<DeploymentState>is(DeploymentState.undeployed)), timeout.maxAttempts, timeout.pause));
+            }
+            else log.info("was not undeployed or assert did not work");
+
+        }
     }
 
     @Override

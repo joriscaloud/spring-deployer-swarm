@@ -71,6 +71,9 @@ public class SwarmAppInstanceStatus implements AppInstanceStatus {
             case TaskStatus.TASK_STATE_RUNNING:
                 return DeploymentState.deployed;
 
+            case TaskStatus.TASK_STATE_ASSIGNED:
+                return DeploymentState.deploying;
+
             case TaskStatus.TASK_STATE_ALLOCATED:
                 return DeploymentState.deployed;
 
