@@ -53,10 +53,25 @@ public class SwarmAppInstanceStatus implements AppInstanceStatus {
         logger.debug("{} - ContainerStatus [ {} ]", taskStatus.containerStatus());
         switch (task.status().state()) {
 
+            case TaskStatus.TASK_STATE_NEW:
+                return DeploymentState.deploying;
+
             case TaskStatus.TASK_STATE_PENDING:
                 return DeploymentState.deploying;
 
-            case  TaskStatus.TASK_STATE_FAILED:
+            case TaskStatus.TASK_STATE_ASSIGNED:
+                return DeploymentState.deploying;
+
+            case TaskStatus.TASK_STATE_PREPARING:
+                return DeploymentState.deploying;
+
+            case TaskStatus.TASK_STATE_READY:
+                return DeploymentState.deploying;
+
+            case TaskStatus.TASK_STATE_STARTING:
+                return DeploymentState.deploying;
+
+            case TaskStatus.TASK_STATE_FAILED:
                 return DeploymentState.failed;
 
             case TaskStatus.TASK_STATE_REJECTED:
@@ -71,8 +86,6 @@ public class SwarmAppInstanceStatus implements AppInstanceStatus {
             case TaskStatus.TASK_STATE_RUNNING:
                 return DeploymentState.deployed;
 
-            case TaskStatus.TASK_STATE_ASSIGNED:
-                return DeploymentState.deploying;
 
             case TaskStatus.TASK_STATE_ALLOCATED:
                 return DeploymentState.deployed;
@@ -81,6 +94,7 @@ public class SwarmAppInstanceStatus implements AppInstanceStatus {
                 return DeploymentState.unknown;
         }
     }
+
 
     public Map<String, String> getAttributes() {
         Map<String, String> result = new HashMap<>();
