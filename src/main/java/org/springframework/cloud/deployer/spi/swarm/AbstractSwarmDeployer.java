@@ -22,7 +22,7 @@ public class AbstractSwarmDeployer {
     protected static final String SPRING_MARKER_KEY = "role";
     protected static final String SPRING_MARKER_VALUE = "spring-app";
 
-    protected static final Logger logger = LoggerFactory.getLogger(SwarmServiceLauncher.class);
+    protected static final Logger logger = LoggerFactory.getLogger(AbstractSwarmDeployer.class);
 
 
 

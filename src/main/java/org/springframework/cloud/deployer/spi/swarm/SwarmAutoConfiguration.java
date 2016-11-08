@@ -28,10 +28,4 @@ public class SwarmAutoConfiguration {
         return new SwarmAppDeployer(properties, defaultDockeClient);
     }
 
-    /*
-    @Bean
-    public TaskLauncher taskDeployer(DockerClient DockerClient) {
-        return new SwarmTaskLauncher(properties, DockerClient);
-    }
-    */
 }
