@@ -11,6 +11,7 @@ import com.spotify.docker.client.messages.swarm.Service;
 import com.spotify.docker.client.messages.swarm.Swarm;
 import com.spotify.docker.client.messages.swarm.TaskStatus;
 import org.hamcrest.Matchers;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -65,16 +66,25 @@ public class SwarmAppDeployerTest {
     @Before
     public void setup() throws Exception {
         dockerApiVersion = defaultDockerClient.version().apiVersion();
-}
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        if (deploymentId != null) {
+            swarmAppDeployer.updateReplicasNumber(deploymentId, 0);
+            defaultDockerClient.removeService(deploymentId);
+            launchTimeout();
+        }
+    }
 
     @Test
-    public void testDeployUndeplloy() throws Exception {
+    public void testDeployUndeploy() throws Exception {
         log.info("Testing {}...", "a simple deployment with the swarm");
         AppDefinition definition = new AppDefinition(randomName(), null);
         Resource resource = integrationTestProcessor();
         AppDeploymentRequest request = new AppDeploymentRequest(definition, resource);
         log.info("Deploying {}...", request.getDefinition().getName());
-        String deploymentId =  swarmAppDeployer.deploy(request);
+        this.deploymentId =  swarmAppDeployer.deploy(request);
         Timeout timeout = deploymentTimeout();
 
         launchTimeout();
@@ -93,8 +103,6 @@ public class SwarmAppDeployerTest {
             assertThat(appStatus.getState(), eventually(is(Matchers.<DeploymentState>is(DeploymentState.undeployed)), timeout.maxAttempts, timeout.pause));
         }
         else log.info("was not undeployed or assert did not work");
-        defaultDockerClient.removeService(deploymentId);
-        launchTimeout();
     }
 
     @Test
@@ -116,7 +124,6 @@ public class SwarmAppDeployerTest {
         log.info("first container :  {}", defaultDockerClient.inspectTask(swarmAppDeployer.getCreatedTask().id()));
         log.info("Service logging :  {}", defaultDockerClient.inspectService(deploymentId));
 
-        launchTimeout();
         log.info("Adding a replica to  {}...", deploymentId);
         swarmAppDeployer.updateReplicasNumber(deploymentId, 2);
         launchTimeout();
@@ -134,9 +141,6 @@ public class SwarmAppDeployerTest {
             AppStatus appStatus = swarmAppDeployer.status(deploymentId, swarmAppDeployer.getCreatedTask());
             assertThat(appStatus.getState(), eventually(is(Matchers.<DeploymentState>is(DeploymentState.deployed)), timeout.maxAttempts, timeout.pause));
         }
-        swarmAppDeployer.updateReplicasNumber(deploymentId, 0);
-        defaultDockerClient.removeService(deploymentId);
-        launchTimeout();
     }
 
 
@@ -159,9 +163,6 @@ public class SwarmAppDeployerTest {
             AppStatus appStatus = swarmAppDeployer.status(deploymentId, swarmAppDeployer.getCreatedTask());
             assertThat(appStatus.getState(), eventually(is(Matchers.<DeploymentState>is(DeploymentState.failed)), timeout.maxAttempts, timeout.pause));
         }
-        swarmAppDeployer.updateReplicasNumber(deploymentId, 0);
-        defaultDockerClient.removeService(deploymentId);
-        launchTimeout();
     }
 
     @Test
@@ -199,9 +200,6 @@ public class SwarmAppDeployerTest {
             AppStatus appStatus = swarmAppDeployer.status(deploymentId, swarmAppDeployer.getCreatedTask());
             assertThat(appStatus.getState(), eventually(is(Matchers.<DeploymentState>is(DeploymentState.deployed)), timeout.maxAttempts, timeout.pause));
         }
-        swarmAppDeployer.updateReplicasNumber(deploymentId, 0);
-        defaultDockerClient.removeService(deploymentId);
-        launchTimeout();
     }
 
 
@@ -231,7 +229,7 @@ public class SwarmAppDeployerTest {
         this.deploymentId =  swarmAppDeployer.deployWithNetwork(request, networkName);
         Timeout timeout = deploymentTimeout();
 
-        final Service inspectService = defaultDockerClient.inspectService(this.deploymentId);
+        final Service inspectService = defaultDockerClient.inspectService(deploymentId);
         assertThat(inspectService.spec().networks().size(), is(1));
         assertThat(Iterables.find(inspectService.spec().networks(),
                 new Predicate<NetworkAttachmentConfig>() {
@@ -242,8 +240,6 @@ public class SwarmAppDeployerTest {
                     }
                 }, null), is(notNullValue()));
 
-        defaultDockerClient.removeService(deploymentId);
-        launchTimeout();
     }
 
 
