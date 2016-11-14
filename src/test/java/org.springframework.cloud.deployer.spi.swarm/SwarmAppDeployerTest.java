@@ -86,7 +86,6 @@ public class SwarmAppDeployerTest {
         log.info("Deploying {}...", request.getDefinition().getName());
         this.deploymentId =  swarmAppDeployer.deploy(request);
         Timeout timeout = deploymentTimeout();
-
         launchTimeout();
         if (swarmAppDeployer.getCreatedTask().status().state().equals(TaskStatus.TASK_STATE_RUNNING)) {
             AppStatus appStatus = swarmAppDeployer.status(deploymentId, swarmAppDeployer.getCreatedTask());
