@@ -10,20 +10,20 @@ import org.springframework.stereotype.Service;
 public class SocketServiceServer extends SocketServiceServerEntity {
 
     @Autowired
-    private SocketServiceServerController controller;
+    private SocketServiceSubscribeController controller;
  
     @Autowired
     private SocketServiceSubscriber subscriber;
     
     public void init() {
         controller.setOwner(this);
-        subscriber.run();
+        controller.getOwner().getAddress();
     }
 
     @Override
     public String getAddress() {
         if(address == null)
-            address = "tcp://*:1234";
+            address = "tcp://localhost:5563";
         return address;
     }
     

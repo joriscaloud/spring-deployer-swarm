@@ -95,7 +95,6 @@ public class SwarmAppInstanceStatus implements AppInstanceStatus {
         }
     }
 
-
     public Map<String, String> getAttributes() {
         Map<String, String> result = new HashMap<>();
 
