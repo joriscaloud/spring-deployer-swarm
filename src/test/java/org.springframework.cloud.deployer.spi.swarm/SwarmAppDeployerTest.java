@@ -104,6 +104,39 @@ public class SwarmAppDeployerTest {
         else log.info("was not undeployed or assert did not work");
     }
 
+
+    @Test
+    public void testDeployUndeployIndexedApps() throws Exception {
+        log.info("Testing {}...", "a simple deployment with the swarm");
+        AppDefinition definition = new AppDefinition(randomName(), null);
+        Resource resource = integrationTestProcessor();
+
+        Map<String, String> properties = new HashMap<>();
+        properties.put("spring.cloud.deployer.count", "3");
+        properties.put("spring.cloud.deployer.indexed", "true");
+        AppDeploymentRequest request = new AppDeploymentRequest(definition, resource, properties);
+
+        log.info("Deploying {}...", request.getDefinition().getName());
+        this.deploymentId =  swarmAppDeployer.deploy(request);
+        Timeout timeout = deploymentTimeout();
+        launchTimeout();
+        if (swarmAppDeployer.getCreatedTask().status().state().equals(TaskStatus.TASK_STATE_RUNNING)) {
+            AppStatus appStatus = swarmAppDeployer.status(deploymentId, swarmAppDeployer.getCreatedTask());
+            assertThat(appStatus.getState(), eventually(is(Matchers.<DeploymentState>is(DeploymentState.deployed)), timeout.maxAttempts, timeout.pause));
+        }
+        else log.info("was not deployed or assert did not work");
+
+
+        log.info("Undeploying {}...", deploymentId);
+        timeout = undeploymentTimeout();
+        swarmAppDeployer.updateReplicasNumber(deploymentId, 0);
+        if (swarmAppDeployer.getCreatedTask().status().state().equals(TaskStatus.TASK_STATE_SHUTDOWN)) {
+            AppStatus appStatus = swarmAppDeployer.status(deploymentId, swarmAppDeployer.getCreatedTask());
+            assertThat(appStatus.getState(), eventually(is(Matchers.<DeploymentState>is(DeploymentState.undeployed)), timeout.maxAttempts, timeout.pause));
+        }
+        else log.info("was not undeployed or assert did not work");
+    }
+
     @Test
     public void testAddOneReplicaToService() throws Exception {
         log.info("Testing {}...", "adding a replicas to a swarm service");

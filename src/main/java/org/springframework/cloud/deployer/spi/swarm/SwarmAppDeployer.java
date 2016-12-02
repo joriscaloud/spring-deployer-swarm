@@ -49,6 +49,8 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
 
     private ServiceCreateResponse response;
 
+    private TaskSpec taskSpec;
+
     public Task getCreatedTask() throws Exception {
         return client.inspectTask(this.createdTask.id());
     }
@@ -77,22 +79,22 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
             String countProperty = request.getDeploymentProperties().get(COUNT_PROPERTY_KEY);
             int count = (countProperty != null) ? Integer.parseInt(countProperty) : 1;
 
-
             String indexedProperty = request.getDeploymentProperties().get(INDEXED_PROPERTY_KEY);
-            boolean indexed = (indexedProperty != null) && Boolean.valueOf(indexedProperty);
+            boolean test = Boolean.valueOf(indexedProperty);
+            boolean indexed = (indexedProperty != null) ? Boolean.valueOf(indexedProperty).booleanValue() : false;
 
             if (indexed) try {
+                String indexedId = appId + "-" + count;
+                Map<String, String> idMap = createIdMap(appId, request, count);
+                logger.debug("Creating service: {} on {} with index count {}", appId, externalPort, count);
+                //creation of the swarm service with all its specificities
+                final TaskSpec taskSpec = createSwarmTaskSpec(request);
+                this.serviceSpec = createSwarmServiceSpec(appId, taskSpec, idMap, count, externalPort);
+                this.response = client.createService(serviceSpec, new ServiceCreateOptions());
+                List<Task> taskList = client.listTasks();
                 for (int index=0 ; index < count ; index++) {
-                    String indexedId = appId + "-" + index;
-                    Map<String, String> idMap = createIdMap(appId, request, index);
-                    logger.debug("Creating service: {} on {} with index {}", appId, externalPort, index);
-                    //creation of the swarm service with all its specificities
-                    final TaskSpec taskSpec = createSwarmTaskSpec(request);
-                    final ServiceSpec serviceSpec = createSwarmServiceSpec(appId, taskSpec, idMap, 1, externalPort);
-                    final ServiceCreateResponse response = client.createService(serviceSpec, new ServiceCreateOptions());
-                    final Task createdTask = client.inspectTask(serviceSpec.name());
-                    this.appStatus = status(appId, createdTask);
-
+                    this.createdTask = client.inspectTask(taskList.get(index).id());
+                    this.appStatus = status(indexedId, this.createdTask);
                 }
             }
             catch (DockerException|InterruptedException e) {
@@ -144,10 +146,10 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
                     logger.debug("Creating service: {} on {} with index {}", appId, externalPort, index);
                     //creation of the swarm service with all its specificities
                     final TaskSpec taskSpec = createSwarmTaskSpec(request);
-                    final ServiceSpec serviceSpec = createSwarmServiceSpecWithNetwork(appId, taskSpec, idMap, 1, externalPort, networkName);
-                    final ServiceCreateResponse response = client.createService(serviceSpec, new ServiceCreateOptions());
-                    final Task createdTask = client.inspectTask(serviceSpec.name());
-                    this.appStatus = status(appId, createdTask);
+                    this.serviceSpec = createSwarmServiceSpecWithNetwork(appId, taskSpec, idMap, count, externalPort, networkName);
+                    this.response = client.createService(serviceSpec, new ServiceCreateOptions());
+                    this.createdTask = client.inspectTask(serviceSpec.name());
+                    this.appStatus = status(appId, this.createdTask);
 
                 }
             }
