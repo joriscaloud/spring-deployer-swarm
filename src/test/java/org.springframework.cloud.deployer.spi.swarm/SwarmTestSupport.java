@@ -5,6 +5,7 @@ import com.spotify.docker.client.DockerClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.stream.test.junit.AbstractExternalResourceTestSupport;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -43,6 +44,11 @@ public class SwarmTestSupport extends AbstractExternalResourceTestSupport<Defaul
         @Bean
         public DockerClient defaultDockerClient() {
             return new DefaultDockerClient(properties.getURI());
+        }
+
+        @Bean
+        public AppDeployer swarmAppDeployer(SwarmDeployerProperties properties, DefaultDockerClient defaultDockeClient) {
+            return new SwarmAppDeployer();
         }
     }
 }

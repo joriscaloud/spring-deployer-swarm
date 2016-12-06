@@ -1,6 +1,6 @@
 package org.springframework.cloud.deployer.spi.swarm;
 
-import com.spotify.docker.client.DefaultDockerClient;
+import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.ServiceCreateOptions;
 import com.spotify.docker.client.messages.ServiceCreateResponse;
@@ -14,7 +14,6 @@ import com.spotify.docker.client.messages.swarm.ServiceMode;
 import com.spotify.docker.client.messages.swarm.ServiceSpec;
 import com.spotify.docker.client.messages.swarm.Task;
 import com.spotify.docker.client.messages.swarm.TaskSpec;
-import com.spotify.docker.client.messages.swarm.TaskStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
@@ -34,36 +33,17 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
     private static final String SERVER_PORT_KEY = "server.port";
     private static final String HELLOWORLD = "hello-world";
     private static final String JAVA = "java";
-    
-    private SwarmDeployerProperties properties = new SwarmDeployerProperties();
-
-    private DefaultDockerClient client;
-
-    private AppStatus appStatus;
-
-    private TaskStatus taskStatus;
-
-    private Task createdTask;
-
-    private ServiceSpec serviceSpec;
-
-    private ServiceCreateResponse response;
-
-    private TaskSpec taskSpec;
-
-    public Task getCreatedTask() throws Exception {
-        return client.inspectTask(this.createdTask.id());
-    }
-
-    public ServiceCreateResponse getServiceCreateResponse() throws Exception {
-        return response;
-    }
 
     @Autowired
-    public SwarmAppDeployer(SwarmDeployerProperties properties, DefaultDockerClient client) {
-        this.properties = properties;
-        this.client = client;
-    }
+    private SwarmDeployerProperties properties;
+
+    @Autowired
+    private DockerClient client;
+
+    public boolean testing = false;
+
+    public Map<String, Object> testInformations = new HashMap<String, Object>();
+
 
     @Override
     public String deploy(AppDeploymentRequest request) {
@@ -71,8 +51,8 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
         logger.debug("Deploying app: {}", appId);
 
         try {
-            this.appStatus = status(appId);
-            if (!this.appStatus.getState().equals(DeploymentState.unknown)) {
+            AppStatus appStatus = status(appId);
+            if (!appStatus.getState().equals(DeploymentState.unknown)) {
                 throw new IllegalStateException(String.format("App '%s' is already deployed", appId));
             }
             int externalPort = configureExternalPort(request);
@@ -80,21 +60,28 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
             int count = (countProperty != null) ? Integer.parseInt(countProperty) : 1;
 
             String indexedProperty = request.getDeploymentProperties().get(INDEXED_PROPERTY_KEY);
-            boolean test = Boolean.valueOf(indexedProperty);
             boolean indexed = (indexedProperty != null) ? Boolean.valueOf(indexedProperty).booleanValue() : false;
 
             if (indexed) try {
                 String indexedId = appId + "-" + count;
                 Map<String, String> idMap = createIdMap(appId, request, count);
                 logger.debug("Creating service: {} on {} with index count {}", appId, externalPort, count);
-                //creation of the swarm service with all its specificities
                 final TaskSpec taskSpec = createSwarmTaskSpec(request);
-                this.serviceSpec = createSwarmServiceSpec(appId, taskSpec, idMap, count, externalPort);
-                this.response = client.createService(serviceSpec, new ServiceCreateOptions());
+                final ServiceSpec serviceSpec = createSwarmServiceSpec(appId, taskSpec, idMap, count, externalPort);
+                final ServiceCreateResponse response = client.createService(serviceSpec, new ServiceCreateOptions());
+                if (testing) {
+                    this.testInformations.put("TaskSpec", taskSpec);
+                    this.testInformations.put("ServiceSpec", serviceSpec);
+                    this.testInformations.put("Response", response);
+                }
                 List<Task> taskList = client.listTasks();
                 for (int index=0 ; index < count ; index++) {
-                    this.createdTask = client.inspectTask(taskList.get(index).id());
-                    this.appStatus = status(indexedId, this.createdTask);
+                    final Task createdTask = client.inspectTask(taskList.get(index).id());
+                    appStatus = status(indexedId, createdTask);
+                    if (testing) {
+                        this.testInformations.put("Task " + index, createdTask);
+                        this.testInformations.put("AppStatus " + index, appStatus);
+                    }
                 }
             }
             catch (DockerException|InterruptedException e) {
@@ -105,10 +92,17 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
                 Map<String, String> idMap = createIdMap(appId, request, null);
                 logger.debug("Creating service: {} on {}", appId, externalPort);
                 final TaskSpec taskSpec = createSwarmTaskSpec(request);
-                this.serviceSpec = createSwarmServiceSpec(appId, taskSpec, idMap, count, externalPort);
-                this.response = client.createService(serviceSpec, new ServiceCreateOptions());
-                this.createdTask = client.inspectTask(serviceSpec.name());
-                this.appStatus = status(appId, this.createdTask);
+                final ServiceSpec serviceSpec = createSwarmServiceSpec(appId, taskSpec, idMap, count, externalPort);
+                final ServiceCreateResponse response = client.createService(serviceSpec, new ServiceCreateOptions());
+                final Task createdTask = client.inspectTask(serviceSpec.name());
+                appStatus = status(appId,  createdTask);
+                if (testing) {
+                    this.testInformations.put("TaskSpec", taskSpec);
+                    this.testInformations.put("ServiceSpec", serviceSpec);
+                    this.testInformations.put("Response", response);
+                    this.testInformations.put("Task", createdTask);
+                    this.testInformations.put("appStatus", appStatus);
+                }
             }
             catch (DockerException|InterruptedException e) {
                 e.printStackTrace();
@@ -127,8 +121,8 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
         logger.debug("Deploying app: {}", appId);
 
         try {
-            this.appStatus = status(appId);
-            if (!this.appStatus.getState().equals(DeploymentState.unknown)) {
+            AppStatus appStatus = status(appId);
+            if (!appStatus.getState().equals(DeploymentState.unknown)) {
                 throw new IllegalStateException(String.format("App '%s' is already deployed", appId));
             }
             int externalPort = configureExternalPort(request);
@@ -140,18 +134,29 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
             boolean indexed = (indexedProperty != null) && Boolean.valueOf(indexedProperty);
 
             if (indexed) try {
-                for (int index=0 ; index < count ; index++) {
-                    String indexedId = appId + "-" + index;
-                    Map<String, String> idMap = createIdMap(appId, request, index);
-                    logger.debug("Creating service: {} on {} with index {}", appId, externalPort, index);
+                    String indexedId = appId + "-" + count;
+                    Map<String, String> idMap = createIdMap(appId, request, count);
+                    logger.debug("Creating service: {} on {} with index {}", appId, externalPort, count);
                     //creation of the swarm service with all its specificities
                     final TaskSpec taskSpec = createSwarmTaskSpec(request);
-                    this.serviceSpec = createSwarmServiceSpecWithNetwork(appId, taskSpec, idMap, count, externalPort, networkName);
-                    this.response = client.createService(serviceSpec, new ServiceCreateOptions());
-                    this.createdTask = client.inspectTask(serviceSpec.name());
-                    this.appStatus = status(appId, this.createdTask);
+                    final ServiceSpec serviceSpec = createSwarmServiceSpecWithNetwork(appId, taskSpec, idMap, count, externalPort, networkName);
+                    final ServiceCreateResponse response = client.createService(serviceSpec, new ServiceCreateOptions());
+                    if (testing) {
+                        this.testInformations.put("TaskSpec", taskSpec);
+                        this.testInformations.put("ServiceSpec", serviceSpec);
+                        this.testInformations.put("Response", response);
+                    }
+                    List<Task> taskList = client.listTasks();
+                    for (int index=0 ; index < count ; index++) {
+                        final Task createdTask = client.inspectTask(taskList.get(index).id());
+                        appStatus = status(indexedId, createdTask);
+                        if (testing) {
+                            this.testInformations.put("Task " + index, createdTask);
+                            this.testInformations.put("AppStatus " + index, appStatus);
+                        }
+                    }
 
-                }
+
             }
             catch (DockerException|InterruptedException e) {
                 e.printStackTrace();
@@ -161,10 +166,17 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
                 Map<String, String> idMap = createIdMap(appId, request, null);
                 logger.debug("Creating service: {} on {}", appId, externalPort);
                 final TaskSpec taskSpec = createSwarmTaskSpec(request);
-                this.serviceSpec = createSwarmServiceSpecWithNetwork(appId, taskSpec, idMap, count, externalPort, networkName);
-                this.response = client.createService(serviceSpec, new ServiceCreateOptions());
-                this.createdTask = client.inspectTask(serviceSpec.name());
-                this.appStatus = status(appId, this.createdTask);
+                final ServiceSpec serviceSpec = createSwarmServiceSpecWithNetwork(appId, taskSpec, idMap, count, externalPort, networkName);
+                final ServiceCreateResponse response = client.createService(serviceSpec, new ServiceCreateOptions());
+                final Task createdTask = client.inspectTask(serviceSpec.name());
+                appStatus = status(appId, createdTask);
+                if (testing) {
+                    this.testInformations.put("TaskSpec", taskSpec);
+                    this.testInformations.put("ServiceSpec", serviceSpec);
+                    this.testInformations.put("Response", response);
+                    this.testInformations.put("Task", createdTask);
+                    this.testInformations.put("appStatus", appStatus);
+                }
             }
             catch (DockerException|InterruptedException e) {
                 e.printStackTrace();
@@ -183,15 +195,9 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
     public void undeploy(String appId) {
         logger.debug("Undeploying app: {}", appId);
         final int timeToWait = 10;
-
         try {
-            List<Service> services =
-                    client.listServices(Service.find().withServiceName(appId).build());
-            for (Service rc : services) {
-                String appIdToDelete = appId;
-                logger.debug("Deleting service for : {}", appIdToDelete);
-                client.stopContainer(appId, timeToWait);
-            }
+            logger.debug("Deleting service for : {}", appId);
+            client.stopContainer(appId, timeToWait);
         }
         catch (DockerException | InterruptedException e) {
             logger.error(e.getMessage(), e);
@@ -202,15 +208,12 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
 
     public void updateReplicasNumber(String appId, int replicas) {
         logger.debug("Undeploying app: {}", appId);
-        final int timeToWait = 10;
-
         try {
             List<Service> services =
                     client.listServices(Service.find().withServiceName(appId).build());
             for (Service rc : services) {
-                String appIdToDelete = this.createdTask.serviceId();
-                logger.debug("Deleting service for : {}", appIdToDelete);
-                client.updateService(appIdToDelete, rc.version().index(), ServiceSpec.builder()
+                logger.debug("Updating replicas number for : {}", rc.id());
+                client.updateService(rc.id(), rc.version().index(), ServiceSpec.builder()
                         .withName(rc.spec().name())
                         .withTaskTemplate(rc.spec().taskTemplate())
                         .withServiceMode(ServiceMode.withReplicas(replicas))
