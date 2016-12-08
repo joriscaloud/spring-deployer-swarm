@@ -90,7 +90,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
                 if (testing) {
                     this.testInformations.put("TaskSpec", taskSpec);
                     this.testInformations.put("ServiceSpec", serviceSpec);
-                    this.testInformations.put("Response", response);
+                    this.testInformations.put("Last Response", response);
                 }
                 List<Task> taskList = client.listTasks();
                 for (int index=0 ; index < count ; index++) {
@@ -131,7 +131,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
                 if (testing) {
                     this.testInformations.put("TaskSpec", taskSpec);
                     this.testInformations.put("ServiceSpec", serviceSpec);
-                    this.testInformations.put("Response", response);
+                    this.testInformations.put("Last Response", response);
                     this.testInformations.put("Task", createdTask);
                     this.testInformations.put("appStatus", appStatus);
                 }
@@ -212,7 +212,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
         } catch (IOException e) {
             throw new IllegalArgumentException("Unable to get URI for " + request.getResource(), e);
         }
-        Map<String, Long> resourceLimits = deduceResourceLimits(properties, request);
+        //Map<String, Long> resourceLimits = deduceResourceLimits(properties, request);
 
         final TaskSpec taskSpec = TaskSpec.builder()
                 .withContainerSpec(ContainerSpec.builder()

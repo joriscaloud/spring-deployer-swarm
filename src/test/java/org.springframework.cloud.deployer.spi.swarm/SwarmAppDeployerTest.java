@@ -144,7 +144,7 @@ public class SwarmAppDeployerTest {
         Timeout timeout = deploymentTimeout();
         launchTimeout();
         assertThat(defaultDockerClient
-                    .inspectService(((ServiceCreateResponse)swarmAppDeployer.testInformations.get("Response")).id())
+                    .inspectService(((ServiceCreateResponse)swarmAppDeployer.testInformations.get("Last Response")).id())
                     .spec()
                     .mode()
                     .replicated()
@@ -157,12 +157,12 @@ public class SwarmAppDeployerTest {
         launchTimeout();
         //TODO getServiceCreateResponse renommer les responses en Last Response
         assertThat(defaultDockerClient
-                    .inspectService(((ServiceCreateResponse)swarmAppDeployer.testInformations.get("Response")).id())
+                    .inspectService(((ServiceCreateResponse)swarmAppDeployer.testInformations.get("Last Response")).id())
                     .spec()
                     .mode()
                     .replicated()
                     .replicas(), is(2L));
-        log.info("Two containers :  {}", defaultDockerClient.inspectService(((ServiceCreateResponse)swarmAppDeployer.testInformations.get("Response")).id()));
+        log.info("Two containers :  {}", defaultDockerClient.inspectService(((ServiceCreateResponse)swarmAppDeployer.testInformations.get("Last Response")).id()));
         log.info("Service logging :  {}", defaultDockerClient.inspectService(deploymentId));
 
         launchTimeout();
@@ -276,9 +276,6 @@ public class SwarmAppDeployerTest {
     private boolean dockerApiVersionAtLeast(String expected) throws Exception {
         return compareVersion(dockerApiVersion, expected) >= 0;
     }
-
-    //Timeouts management -> used to prevent tests to fail because the apps didn't deploy quickly enough
-
 
     protected static class Timeout {
 
