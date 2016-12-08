@@ -1,14 +1,12 @@
 package org.springframework.cloud.deployer.spi.swarm;
 
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.spotify.docker.client.DockerClient;
-import com.spotify.docker.client.messages.Ipam;
-import com.spotify.docker.client.messages.NetworkConfig;
-import com.spotify.docker.client.messages.NetworkCreation;
+import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.ServiceCreateResponse;
 import com.spotify.docker.client.messages.swarm.Service;
 import com.spotify.docker.client.messages.swarm.Swarm;
 import com.spotify.docker.client.messages.swarm.Task;
-import com.spotify.docker.client.messages.swarm.TaskStatus;
 import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Before;
@@ -28,6 +26,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -37,6 +36,7 @@ import static org.hamcrest.Matchers.isEmptyOrNullString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 import static org.springframework.cloud.deployer.spi.test.EventuallyMatcher.eventually;
 
@@ -63,15 +63,22 @@ public class SwarmAppDeployerTest {
     public void setup() throws Exception {
         dockerApiVersion = defaultDockerClient.version().apiVersion();
         swarmAppDeployer.testing = true;
+        swarmAppDeployer.withNetwork = false;
     }
 
     @After
-    public void tearDown() throws Exception {
-        if (deploymentId != null) {
-            swarmAppDeployer.updateReplicasNumber(deploymentId, 0);
-            defaultDockerClient.removeService(deploymentId);
-            launchTimeout();
-        }
+    public void tearDown() throws InterruptedException, DockerException {
+        List<Service> services = defaultDockerClient.listServices();
+
+        services.forEach(service -> {
+                    try {
+                        defaultDockerClient.removeService(service.id());
+                    } catch (InterruptedException | DockerException e) {
+                        throw new UncheckedExecutionException(e);
+                    }
+
+                });
+        launchTimeout();
     }
 
     @Test
@@ -83,22 +90,15 @@ public class SwarmAppDeployerTest {
         log.info("Deploying {}...", request.getDefinition().getName());
         this.deploymentId =  swarmAppDeployer.deploy(request);
         Timeout timeout = deploymentTimeout();
+        Task task = (Task) swarmAppDeployer.testInformations.get("Task");
+        AppStatus appStatus = swarmAppDeployer.status(task.id(), task);
         launchTimeout();
-        if (((Task)swarmAppDeployer.testInformations.get("Task")).status().state().equals(TaskStatus.TASK_STATE_RUNNING)) {
-            AppStatus appStatus = swarmAppDeployer.status(deploymentId,(Task)swarmAppDeployer.testInformations.get("Task"));
-            assertThat(appStatus.getState(), eventually(is(Matchers.<DeploymentState>is(DeploymentState.deployed)), timeout.maxAttempts, timeout.pause));
-        }
-        else log.info("was not deployed or assert did not work");
-
+        assertThat(appStatus.getState(), eventually(Matchers.<DeploymentState>anyOf(is(DeploymentState.deployed), is(DeploymentState.deploying)), timeout.maxAttempts, timeout.pause));
 
         log.info("Undeploying {}...", deploymentId);
-        timeout = undeploymentTimeout();
+        launchTimeout();
         swarmAppDeployer.updateReplicasNumber(deploymentId, 0);
-        if (((Task) swarmAppDeployer.testInformations.get("Task")).status().state().equals(TaskStatus.TASK_STATE_SHUTDOWN)) {
-            AppStatus appStatus = swarmAppDeployer.status(deploymentId, (Task)swarmAppDeployer.testInformations.get("Task"));
-            assertThat(appStatus.getState(), eventually(is(Matchers.<DeploymentState>is(DeploymentState.undeployed)), timeout.maxAttempts, timeout.pause));
-        }
-        else log.info("was not undeployed or assert did not work");
+        assertTrue(defaultDockerClient.listServices().isEmpty());
     }
 
 
@@ -108,9 +108,9 @@ public class SwarmAppDeployerTest {
         AppDefinition definition = new AppDefinition(randomName(), null);
         Resource resource = integrationTestProcessor();
 
-        int count = 3;
+        int count = 10;
         Map<String, String> properties = new HashMap<>();
-        properties.put("spring.cloud.deployer.count", "3");
+        properties.put("spring.cloud.deployer.count", "10");
         properties.put("spring.cloud.deployer.indexed", "true");
         AppDeploymentRequest request = new AppDeploymentRequest(definition, resource, properties);
 
@@ -119,24 +119,18 @@ public class SwarmAppDeployerTest {
         Timeout timeout = deploymentTimeout();
         launchTimeout();
         for (int index = 0; index<count; index++) {
-            if (((Task) swarmAppDeployer.testInformations.get("Task " + index)).status().state().equals(TaskStatus.TASK_STATE_RUNNING)) {
-                AppStatus appStatus = swarmAppDeployer.status(deploymentId, (Task) swarmAppDeployer.testInformations.get("Task " + index));
-                assertThat(appStatus.getState(), eventually(is(Matchers.<DeploymentState>is(DeploymentState.deployed)), timeout.maxAttempts, timeout.pause));
-            }
-            else log.info("was not deployed or assert did not work");
+                Task task = (Task)swarmAppDeployer.testInformations.get("Task " + index);
+                AppStatus appStatus = swarmAppDeployer.status(deploymentId, task);
+                assertThat(appStatus.getState(), eventually
+                                        (Matchers.<DeploymentState>anyOf
+                                        (is(DeploymentState.deployed), is(DeploymentState.deploying)),
+                                        timeout.maxAttempts, timeout.pause));
         }
-
 
         log.info("Undeploying {}...", deploymentId);
         timeout = undeploymentTimeout();
         swarmAppDeployer.updateReplicasNumber(deploymentId, 0);
-        for (int index = 0; index<count; index++) {
-            if (((Task) swarmAppDeployer.testInformations.get("Task " + index)).status().state().equals(TaskStatus.TASK_STATE_SHUTDOWN)) {
-                AppStatus appStatus = swarmAppDeployer.status(deploymentId, (Task) swarmAppDeployer.testInformations.get("Task " + index));
-                assertThat(appStatus.getState(), eventually(is(Matchers.<DeploymentState>is(DeploymentState.undeployed)), timeout.maxAttempts, timeout.pause));
-            }
-            else log.info("was not undeployed or assert did not work");
-        }
+        assertTrue(defaultDockerClient.listServices().isEmpty());
     }
 
     @Test
@@ -172,10 +166,14 @@ public class SwarmAppDeployerTest {
         log.info("Service logging :  {}", defaultDockerClient.inspectService(deploymentId));
 
         launchTimeout();
-        if (((Task)swarmAppDeployer.testInformations.get("Task")).status().state().equals(TaskStatus.TASK_STATE_RUNNING)) {
-            AppStatus appStatus = swarmAppDeployer.status(deploymentId, ((Task)swarmAppDeployer.testInformations.get("Task")));
-            assertThat(appStatus.getState(), eventually(is(Matchers.<DeploymentState>is(DeploymentState.deployed)), timeout.maxAttempts, timeout.pause));
-        }
+        Task task = (Task)swarmAppDeployer.testInformations.get("Task");
+        AppStatus appStatus = swarmAppDeployer.status(task.id(), task);
+        launchTimeout();
+        assertThat(appStatus.getState(), eventually
+                        (Matchers.<DeploymentState>
+                        anyOf(is(DeploymentState.deployed), is(DeploymentState.deploying)),
+                        timeout.maxAttempts, timeout.pause));
+
     }
 
 
@@ -194,10 +192,13 @@ public class SwarmAppDeployerTest {
         Timeout timeout = deploymentTimeout();
         launchTimeout();
 
-        if (((Task)swarmAppDeployer.testInformations.get("Task")).status().state().equals(TaskStatus.TASK_STATE_RUNNING)) {
-            AppStatus appStatus = swarmAppDeployer.status(deploymentId, ((Task)swarmAppDeployer.testInformations.get("Task")));
-            assertThat(appStatus.getState(), eventually(is(Matchers.<DeploymentState>is(DeploymentState.failed)), timeout.maxAttempts, timeout.pause));
-        }
+        Task task = (Task)swarmAppDeployer.testInformations.get("Task");
+        AppStatus appStatus = swarmAppDeployer.status(task.id(), task);
+        launchTimeout();
+        assertThat(appStatus.getState(), eventually
+                                (Matchers.<DeploymentState>
+                                anyOf(is(DeploymentState.deployed), is(DeploymentState.deploying)),
+                                timeout.maxAttempts, timeout.pause));
     }
 
     @Test
@@ -231,10 +232,14 @@ public class SwarmAppDeployerTest {
 
         Timeout timeout = launchTimeout();
         launchTimeout();
-        if (((Task)swarmAppDeployer.testInformations.get("Task")).status().state().equals(TaskStatus.TASK_STATE_RUNNING)) {
-            AppStatus appStatus = swarmAppDeployer.status(deploymentId, ((Task)swarmAppDeployer.testInformations.get("Task")));
-            assertThat(appStatus.getState(), eventually(is(Matchers.<DeploymentState>is(DeploymentState.deployed)), timeout.maxAttempts, timeout.pause));
-        }
+        Task task = (Task)swarmAppDeployer.testInformations.get("Task");
+        AppStatus appStatus = swarmAppDeployer.status(task.id(), task);
+        launchTimeout();
+        assertThat(appStatus.getState(),
+                            eventually(Matchers.<DeploymentState>
+                            anyOf(is(DeploymentState.deployed), is(DeploymentState.deploying)),
+                            timeout.maxAttempts, timeout.pause));
+
     }
 
 
@@ -242,26 +247,13 @@ public class SwarmAppDeployerTest {
     public void testCreateServiceWithNetwork() throws Exception {
         requireDockerApiVersionAtLeast("1.24", "swarm support");
 
-        final String networkName = randomName();
-        final String serviceName = randomName();
-
-        final NetworkCreation networkCreation = defaultDockerClient
-                .createNetwork(NetworkConfig.builder().driver("overlay")
-                        // TODO: workaround for https://github.com/docker/docker/issues/25735
-                        .ipam(Ipam.builder().driver("default").build())
-                        //
-                        .name(networkName).build());
-
-        final String networkId = networkCreation.id();
-
-        assertThat(networkId, is(notNullValue()));
-
+        swarmAppDeployer.withNetwork = true;
         log.info("Testing {}...", "a simple deployment with the swarm");
         AppDefinition definition = new AppDefinition(randomName(), null);
         Resource resource = integrationTestProcessor();
         AppDeploymentRequest request = new AppDeploymentRequest(definition, resource);
         log.info("Deploying {}...", request.getDefinition().getName());
-        this.deploymentId =  swarmAppDeployer.deployWithNetwork(request, networkName);
+        this.deploymentId =  swarmAppDeployer.deploy(request);
         Timeout timeout = deploymentTimeout();
 
         final Service inspectService = defaultDockerClient.inspectService(deploymentId);
@@ -300,7 +292,6 @@ public class SwarmAppDeployerTest {
         }
     }
 
-    @Autowired
     protected Resource integrationTestProcessor() {
         return new DockerResource("springcloud/spring-cloud-deployer-spi-test-app:latest");
     }

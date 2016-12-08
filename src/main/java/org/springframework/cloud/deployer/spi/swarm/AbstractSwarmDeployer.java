@@ -64,4 +64,31 @@ public class AbstractSwarmDeployer {
         return statusBuilder.build();
     }
 
+    protected Map<String, Long> deduceResourceLimits(SwarmDeployerProperties properties, AppDeploymentRequest request) {
+        String memOverride = request.getDeploymentProperties().get("spring.cloud.deployer.swarm.memory");
+        Long memory = null;
+        if (memOverride == null) {
+            memory = properties.getMemory();
+        }
+        else {
+            memory = Long.parseLong(memOverride, 10);
+        }
+
+        String cpuOverride = request.getDeploymentProperties().get("spring.cloud.deployer.swarm.cpu");
+        Long cpu = null;
+        if (cpuOverride == null) {
+            cpu = properties.getCpu();
+        }
+        else {
+            cpu = Long.parseLong(cpuOverride, 10);
+        }
+
+        logger.debug("Using limits - cpu: " + cpuOverride + " mem: " + memOverride);
+
+        Map<String, Long> limits = new HashMap<String, Long>();
+        limits.put("memory", memory);
+        limits.put("cpu", cpu);
+        return limits;
+    }
+
 }

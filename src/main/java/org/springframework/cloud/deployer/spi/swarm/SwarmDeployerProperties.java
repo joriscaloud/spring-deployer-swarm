@@ -15,7 +15,37 @@ public class SwarmDeployerProperties {
         return (URI.create("http://127.0.0.1:2375"));
             }
 
+    /**
+     * Environment variables to set for any deployed app container. To be used for service binding.
+     */
     private String[] environmentVariables = new String[]{};
+
+    /**
+     * Memory to allocate for a service
+     */
+    private Long memory = 512L;
+
+    /**
+     * CPU to allocate for a service
+     */
+    private Long cpu = 500L;
+
+
+    public void setCpu(Long cpu) {
+        this.cpu = cpu;
+    }
+
+    public Long getCpu() {
+        return cpu;
+    }
+
+    public Long getMemory() {
+        return memory;
+    }
+
+    public void setMemory(Long memory) {
+        this.memory = memory;
+    }
 
 
     public String[] getEnvironmentVariables() {
@@ -25,5 +55,7 @@ public class SwarmDeployerProperties {
     public void setEnvironmentVariables(String[] environmentVariables) {
         this.environmentVariables = environmentVariables;
     }
+
+
 
 }
