@@ -1,6 +1,5 @@
 package org.springframework.cloud.deployer.spi.swarm;
 
-import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.ServiceCreateResponse;
@@ -74,7 +73,7 @@ public class SwarmAppDeployerTest {
                     try {
                         defaultDockerClient.removeService(service.id());
                     } catch (InterruptedException | DockerException e) {
-                        throw new UncheckedExecutionException(e);
+                        e.printStackTrace();
                     }
 
                 });
