@@ -128,7 +128,7 @@ public class SwarmAppDeployerTest {
         }
 
         log.info("Undeploying {}...", deploymentId);
-        timeout = undeploymentTimeout();
+        launchTimeout();
         swarmAppDeployer.updateReplicasNumber(deploymentId, 0);
         assertTrue(defaultDockerClient.listServices().isEmpty());
     }
@@ -155,7 +155,6 @@ public class SwarmAppDeployerTest {
         log.info("Adding a replica to  {}...", deploymentId);
         swarmAppDeployer.updateReplicasNumber(deploymentId, 2);
         launchTimeout();
-        //TODO getServiceCreateResponse renommer les responses en Last Response
         assertThat(defaultDockerClient
                     .inspectService(((ServiceCreateResponse)swarmAppDeployer.testInformations.get("Last Response")).id())
                     .spec()
@@ -254,8 +253,7 @@ public class SwarmAppDeployerTest {
         AppDeploymentRequest request = new AppDeploymentRequest(definition, resource);
         log.info("Deploying {}...", request.getDefinition().getName());
         this.deploymentId =  swarmAppDeployer.deploy(request);
-        Timeout timeout = deploymentTimeout();
-
+        launchTimeout();
         final Service inspectService = defaultDockerClient.inspectService(deploymentId);
         assertThat(inspectService.spec().networks().size(), is(1));
 
@@ -308,22 +306,6 @@ public class SwarmAppDeployerTest {
      */
     protected Timeout deploymentTimeout() {
         return new Timeout(12, 5000);
-    }
-
-    /**
-     * Return the timeout to use for repeatedly querying app status while it is being un-deployed.
-     * Default value is one minute, being queried evey 5 seconds.
-     */
-    protected Timeout undeploymentTimeout() {
-        return new Timeout(20, 5000);
-    }
-
-    /**
-     * Return the time to wait between reusing deployment requests. This could be necessary to give
-     * some platforms time to clean up after undeployment.
-     */
-    protected int redeploymentPause() {
-        return 0;
     }
 
 
