@@ -3,11 +3,9 @@
     <modelVersion>4.0.0</modelVersion>
     <artifactId>spring-cloud-deployer-swarm</artifactId>
     <version>1.0.0.BUILD-SNAPSHOT</version>
-    <groupId>org.springframework.cloud</groupId>
     <packaging>jar</packaging>
     <name>spring-cloud-deployer-swarm</name>
     <description>Spring Cloud - Deployer for Swarm</description>
-
 
     <parent>
         <groupId>org.springframework.cloud</groupId>
@@ -15,19 +13,12 @@
         <version>1.0.2.RELEASE</version>
     </parent>
 
-
     <properties>
         <java.version>1.8</java.version>
         <spring-cloud-deployer-spi.version>1.0.2.RELEASE</spring-cloud-deployer-spi.version>
     </properties>
 
-
     <dependencies>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-dataflow-server-core</artifactId>
-            <version>1.1.0.RELEASE</version>
-        </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-deployer-spi</artifactId>
@@ -40,12 +31,17 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter</artifactId>
         </dependency>
         <dependency>
             <groupId>com.spotify</groupId>
             <artifactId>docker-client</artifactId>
             <version>6.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.zeromq</groupId>
+            <artifactId>jeromq</artifactId>
+            <version>0.3.5</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
@@ -63,11 +59,5 @@
             <artifactId>spring-cloud-stream-test-support-internal</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.zeromq</groupId>
-            <artifactId>jeromq</artifactId>
-            <version>0.3.5</version>
-        </dependency>
-
     </dependencies>
 </project>

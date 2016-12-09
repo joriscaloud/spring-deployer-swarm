@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.deployer.resource.docker.DockerResource;
+import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
@@ -51,12 +52,16 @@ public class SwarmAppDeployerTest {
     @Autowired
     private DockerClient defaultDockerClient;
 
-    @Autowired
     private SwarmAppDeployer swarmAppDeployer;
 
     private String dockerApiVersion;
 
     private String deploymentId;
+
+    @Autowired
+    public void setAppDeployer(AppDeployer appDeployer) {
+        this.swarmAppDeployer = (SwarmAppDeployer) appDeployer;
+    }
 
     @Before
     public void setup() throws Exception {

@@ -47,7 +47,7 @@ public class SwarmTestSupport extends AbstractExternalResourceTestSupport<Defaul
         }
 
         @Bean
-        public AppDeployer swarmAppDeployer(SwarmDeployerProperties properties, DefaultDockerClient defaultDockeClient) {
+        public AppDeployer swarmAppDeployer(SwarmDeployerProperties properties, DefaultDockerClient defaultDockerClient) {
             return new SwarmAppDeployer();
         }
     }

@@ -4,7 +4,10 @@ import com.spotify.docker.client.DefaultDockerClient;
 import com.spotify.docker.client.DockerClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigureOrder;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cloud.deployer.spi.app.AppDeployer;
+import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -26,8 +29,15 @@ public class SwarmAutoConfiguration {
     }
 
     @Bean
-    public SwarmAppDeployer swarmAppDeployer() {
+    @ConditionalOnMissingBean(AppDeployer.class)
+    public AppDeployer appDeployer() {
         return new SwarmAppDeployer();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(TaskLauncher.class)
+    public TaskLauncher taskLauncher() {
+        return new SwarmTaskLauncher();
     }
 
 }
