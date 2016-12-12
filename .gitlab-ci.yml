@@ -13,4 +13,4 @@ deploy:
   stage: deploy
   image: maven:3.3.9-jdk-8
   script:
-    - 'mvn $MAVEN_CLI_OPTS deploy -B'
+    - 'mvn $MAVEN_CLI_OPTS deploy -B -Dmaven.test.skip=true'
