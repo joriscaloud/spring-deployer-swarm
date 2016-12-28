@@ -59,7 +59,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
             if (!appStatus.getState().equals(DeploymentState.unknown)) {
                 throw new IllegalStateException(String.format("App '%s' is already deployed", appId));
             }
-            int externalPort = configureExternalPort(request);
+            configureExternalPort(request);
             String countProperty = request.getDeploymentProperties().get(COUNT_PROPERTY_KEY);
             int count = (countProperty != null) ? Integer.parseInt(countProperty) : 1;
 
@@ -70,12 +70,12 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
             if (indexed) try {
                 String indexedId = appId + "-" + count;
                 Map<String, String> idMap = createIdMap(appId, request, count);
-                logger.debug("Creating service: {} on {} with index count {}", appId, externalPort, count);
-                final TaskSpec taskSpec = createSwarmTaskSpec(request);
+                logger.debug("Creating service: {} on {} with index count {}", appId, 0, count);
+                TaskSpec taskSpec = createSwarmTaskSpec(request);
                 ServiceSpec serviceSpec = null;
                 if (withNetwork) {
                     final String networkName = randomName();
-                    serviceSpec = createSwarmServiceSpecWithNetwork(appId, taskSpec, idMap, count, externalPort, networkName);
+                    serviceSpec = createSwarmServiceSpecWithNetwork(appId, taskSpec, idMap, count, 0, networkName);
                     try {
                         createNetwork(networkName);
                     }
@@ -84,9 +84,9 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
                     }
                 }
                 else {
-                    serviceSpec = createSwarmServiceSpec(appId, taskSpec, idMap, count, externalPort);
+                    serviceSpec = createSwarmServiceSpec(appId, taskSpec, idMap, count, 0);
                 }
-                final ServiceCreateResponse response = client.createService(serviceSpec, new ServiceCreateOptions());
+                ServiceCreateResponse response = client.createService(serviceSpec, new ServiceCreateOptions());
                 if (testing) {
                     this.testInformations.put("TaskSpec", taskSpec);
                     this.testInformations.put("ServiceSpec", serviceSpec);
@@ -94,7 +94,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
                 }
                 List<Task> taskList = client.listTasks();
                 for (int index=0 ; index < count ; index++) {
-                    final Task createdTask = client.inspectTask(taskList.get(index).id());
+                    Task createdTask = client.inspectTask(taskList.get(index).id());
                     appStatus = status(indexedId, createdTask);
                     if (testing) {
                         this.testInformations.put("Task " + index, createdTask);
@@ -109,12 +109,12 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
             //Single container deployment
             else try {
                 Map<String, String> idMap = createIdMap(appId, request, null);
-                logger.debug("Creating service: {} on {}", appId, externalPort);
+                logger.debug("Creating service: {} on {}", appId);
                 final TaskSpec taskSpec = createSwarmTaskSpec(request);
                 ServiceSpec serviceSpec = null;
                 if (withNetwork) {
                     final String networkName = randomName();
-                    serviceSpec = createSwarmServiceSpecWithNetwork(appId, taskSpec, idMap, count, externalPort, networkName);
+                    serviceSpec = createSwarmServiceSpecWithNetwork(appId, taskSpec, idMap, count, 0, networkName);
                     try {
                         createNetwork(networkName);
                     }
@@ -123,11 +123,15 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
                     }
                 }
                 else {
-                    serviceSpec = createSwarmServiceSpec(appId, taskSpec, idMap, count, externalPort);
+                    serviceSpec = createSwarmServiceSpec(appId, taskSpec, idMap, count, 0);
                 }
-                final ServiceCreateResponse response = client.createService(serviceSpec, new ServiceCreateOptions());
-                final Task createdTask = client.inspectTask(serviceSpec.name());
-                appStatus = status(appId,  createdTask);
+                ServiceCreateResponse response = client.createService(serviceSpec, new ServiceCreateOptions());
+                Task listTask = client.listTasks().iterator().next();
+                Task createdTask = null;
+                if (listTask.serviceId().equals(response.id())) {
+                     createdTask = listTask;
+                }
+                appStatus = status(appId, createdTask);
                 if (testing) {
                     this.testInformations.put("TaskSpec", taskSpec);
                     this.testInformations.put("ServiceSpec", serviceSpec);
@@ -264,7 +268,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
 
 
     protected int configureExternalPort(final AppDeploymentRequest request) {
-        int externalPort = 2375;
+        int externalPort = 0;
         Map<String, String> parameters = request.getDefinition().getProperties();
         if (parameters.containsKey(SERVER_PORT_KEY)) {
             externalPort = Integer.valueOf(parameters.get(SERVER_PORT_KEY));

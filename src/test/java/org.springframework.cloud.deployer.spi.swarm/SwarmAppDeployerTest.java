@@ -56,7 +56,6 @@ public class SwarmAppDeployerTest {
 
     private String dockerApiVersion;
 
-    private String deploymentId;
 
     @Autowired
     public void setAppDeployer(AppDeployer appDeployer) {
@@ -92,7 +91,7 @@ public class SwarmAppDeployerTest {
         Resource resource = integrationTestProcessor();
         AppDeploymentRequest request = new AppDeploymentRequest(definition, resource);
         log.info("Deploying {}...", request.getDefinition().getName());
-        this.deploymentId =  swarmAppDeployer.deploy(request);
+        String deploymentId =  swarmAppDeployer.deploy(request);
         Timeout timeout = deploymentTimeout();
         Task task = (Task) swarmAppDeployer.testInformations.get("Task");
         AppStatus appStatus = swarmAppDeployer.status(task.id(), task);
@@ -105,6 +104,37 @@ public class SwarmAppDeployerTest {
         assertTrue(defaultDockerClient.listServices().isEmpty());
     }
 
+    @Test
+    public void testDeployUndeployTwoDifferentImages() throws Exception {
+        log.info("Testing the  deployment of two different images in the swarm");
+        AppDefinition firstDefinition = new AppDefinition(randomName(), null);
+        Resource firstResource = integrationTestProcessor();
+        AppDeploymentRequest firstRequest = new AppDeploymentRequest(firstDefinition, firstResource);
+        log.info("Deploying {}...", firstRequest.getDefinition().getName());
+        String firstDeploymentId =  swarmAppDeployer.deploy(firstRequest);
+        Timeout timeout = deploymentTimeout();
+        Task firstTask = (Task) swarmAppDeployer.testInformations.get("Task");
+        AppStatus firstAppStatus = swarmAppDeployer.status(firstTask.id(), firstTask);
+        launchTimeout();
+        assertThat(firstAppStatus.getState(), eventually(Matchers.<DeploymentState>anyOf(is(DeploymentState.deployed), is(DeploymentState.deploying)), timeout.maxAttempts, timeout.pause));
+
+        AppDefinition secondDefinition = new AppDefinition(randomName(), null);
+        Resource secondResource = otherIntegrationTestProcessor();
+        AppDeploymentRequest secondRequest = new AppDeploymentRequest(secondDefinition, secondResource);
+        log.info("Deploying {}...", secondRequest.getDefinition().getName());
+        String secondDeploymentId =  swarmAppDeployer.deploy(secondRequest);
+        launchTimeout();
+        Task secondTask = (Task) swarmAppDeployer.testInformations.get("Task");
+        AppStatus secondAppStatus = swarmAppDeployer.status(secondTask.id(), secondTask);
+        launchTimeout();
+        assertThat(secondAppStatus.getState(), eventually(Matchers.<DeploymentState>anyOf(is(DeploymentState.deployed), is(DeploymentState.deploying)), timeout.maxAttempts, timeout.pause));
+
+        log.info("Undeploying {}...", firstDeploymentId, secondDeploymentId);
+        launchTimeout();
+        swarmAppDeployer.updateReplicasNumber(firstDeploymentId, 0);
+        swarmAppDeployer.updateReplicasNumber(secondDeploymentId, 0);
+        assertTrue(defaultDockerClient.listServices().isEmpty());
+    }
 
     @Test
     public void testDeployUndeployIndexedApps() throws Exception {
@@ -119,7 +149,7 @@ public class SwarmAppDeployerTest {
         AppDeploymentRequest request = new AppDeploymentRequest(definition, resource, properties);
 
         log.info("Deploying {}...", request.getDefinition().getName());
-        this.deploymentId =  swarmAppDeployer.deploy(request);
+        String deploymentId =  swarmAppDeployer.deploy(request);
         Timeout timeout = deploymentTimeout();
         launchTimeout();
         for (int index = 0; index<count; index++) {
@@ -144,7 +174,7 @@ public class SwarmAppDeployerTest {
         Resource resource = integrationTestProcessor();
         AppDeploymentRequest request = new AppDeploymentRequest(definition, resource);
         log.info("Deploying {}...", request.getDefinition().getName());
-        this.deploymentId =  swarmAppDeployer.deploy(request);
+        String deploymentId =  swarmAppDeployer.deploy(request);
         Timeout timeout = deploymentTimeout();
         launchTimeout();
         assertThat(defaultDockerClient
@@ -190,7 +220,7 @@ public class SwarmAppDeployerTest {
         Resource resource = integrationTestProcessor();
         AppDeploymentRequest request = new AppDeploymentRequest(definition, resource);
         log.info("Launching {}...", request.getDefinition().getName());
-        this.deploymentId = swarmAppDeployer.deploy(request);
+        String deploymentId = swarmAppDeployer.deploy(request);
         log.info("Launched {} ", deploymentId);
         Timeout timeout = deploymentTimeout();
         launchTimeout();
@@ -230,7 +260,7 @@ public class SwarmAppDeployerTest {
         AppDeploymentRequest request = new AppDeploymentRequest(definition, resource, Collections.emptyMap(),
                 Collections.singletonList("--exitCode=0"));
         log.info("Launching {}...", request.getDefinition().getName());
-        this.deploymentId = swarmAppDeployer.deploy(request);
+        String deploymentId = swarmAppDeployer.deploy(request);
         log.info("Launched {} ", deploymentId);
 
         Timeout timeout = launchTimeout();
@@ -256,7 +286,7 @@ public class SwarmAppDeployerTest {
         Resource resource = integrationTestProcessor();
         AppDeploymentRequest request = new AppDeploymentRequest(definition, resource);
         log.info("Deploying {}...", request.getDefinition().getName());
-        this.deploymentId =  swarmAppDeployer.deploy(request);
+        String deploymentId =  swarmAppDeployer.deploy(request);
         launchTimeout();
         final Service inspectService = defaultDockerClient.inspectService(deploymentId);
         assertThat(inspectService.spec().networks().size(), is(1));
@@ -295,8 +325,12 @@ public class SwarmAppDeployerTest {
         return new DockerResource("springcloud/spring-cloud-deployer-spi-test-app:latest");
     }
 
+    protected Resource otherIntegrationTestProcessor() {
+        return new DockerResource("testsource");
+    }
+
     protected Timeout launchTimeout() {
-        return new Timeout(20, 5000);
+        return new Timeout(20, 8000);
     }
 
 
