@@ -3,6 +3,7 @@ package org.springframework.cloud.deployer.spi.swarm;
 import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.Ipam;
+import com.spotify.docker.client.messages.Network;
 import com.spotify.docker.client.messages.NetworkConfig;
 import com.spotify.docker.client.messages.NetworkCreation;
 import com.spotify.docker.client.messages.ServiceCreateOptions;
@@ -73,9 +74,15 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
                 logger.debug("Creating service: {} on {} with index count {}", appId, 0, count);
                 TaskSpec taskSpec = createSwarmTaskSpec(request);
                 ServiceSpec serviceSpec = null;
-                if (withNetwork) {
-                    final String networkName = randomName();
-                    serviceSpec = createSwarmServiceSpecWithNetwork(appId, taskSpec, idMap, count, 0, networkName);
+                final String networkName =  request.getDeploymentProperties().get(AppDeployer.GROUP_PROPERTY_KEY);
+                boolean networkAlreadyCreated = false;
+                List<Network> listNetwork = client.listNetworks();
+                for (Network n : listNetwork) {
+                    if (n.name().equals(networkName)) {
+                        networkAlreadyCreated = true;
+                    }
+                }
+                if (!networkAlreadyCreated) {
                     try {
                         createNetwork(networkName);
                     }
@@ -83,9 +90,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
                         e.printStackTrace();
                     }
                 }
-                else {
-                    serviceSpec = createSwarmServiceSpec(appId, taskSpec, idMap, count, 0);
-                }
+                serviceSpec = createSwarmServiceSpecWithNetwork(appId, taskSpec, idMap, count, 0, networkName);
                 ServiceCreateResponse response = client.createService(serviceSpec, new ServiceCreateOptions());
                 if (testing) {
                     this.testInformations.put("TaskSpec", taskSpec);
@@ -112,9 +117,15 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
                 logger.debug("Creating service: {} on {}", appId);
                 final TaskSpec taskSpec = createSwarmTaskSpec(request);
                 ServiceSpec serviceSpec = null;
-                if (withNetwork) {
-                    final String networkName = randomName();
-                    serviceSpec = createSwarmServiceSpecWithNetwork(appId, taskSpec, idMap, count, 0, networkName);
+                final String networkName = request.getDeploymentProperties().get(AppDeployer.GROUP_PROPERTY_KEY);
+                boolean networkAlreadyCreated = false;
+                List<Network> listNetwork = client.listNetworks();
+                for (Network n : listNetwork) {
+                    if (n.name().equals(networkName)) {
+                        networkAlreadyCreated = true;
+                    }
+                }
+                if (!networkAlreadyCreated) {
                     try {
                         createNetwork(networkName);
                     }
@@ -122,9 +133,9 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
                         e.printStackTrace();
                     }
                 }
-                else {
-                    serviceSpec = createSwarmServiceSpec(appId, taskSpec, idMap, count, 0);
-                }
+
+                serviceSpec = createSwarmServiceSpecWithNetwork(appId, taskSpec, idMap, count, 0, networkName);
+
                 ServiceCreateResponse response = client.createService(serviceSpec, new ServiceCreateOptions());
                 Task listTask = client.listTasks().iterator().next();
                 Task createdTask = null;
@@ -194,7 +205,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
     }
 
 
-    public void createNetwork(String networkName) throws Exception{
+    public void createNetwork(String networkName) throws Exception {
         final NetworkCreation networkCreation = client
                 .createNetwork(NetworkConfig.builder().driver("overlay")
                         // TODO: workaround for https://github.com/docker/docker/issues/25735
