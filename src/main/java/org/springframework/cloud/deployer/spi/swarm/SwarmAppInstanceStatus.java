@@ -99,7 +99,7 @@ public class SwarmAppInstanceStatus implements AppInstanceStatus {
         Map<String, String> result = new HashMap<>();
 
         if (containerStatus != null) {
-            result.put("container_id", containerStatus.containerID());
+            result.put("container_id", containerStatus.containerId());
 
         }
 ;
