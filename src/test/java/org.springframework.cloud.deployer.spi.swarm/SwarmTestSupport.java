@@ -1,3 +1,4 @@
+/*
 package org.springframework.cloud.deployer.spi.swarm;
 
 import com.spotify.docker.client.DefaultDockerClient;
@@ -11,9 +12,11 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+*/
 /**
  * Created by joriscaloud on 13/10/16.
- */
+ *//*
+
 public class SwarmTestSupport extends AbstractExternalResourceTestSupport<DefaultDockerClient> {
 
 
@@ -52,3 +55,4 @@ public class SwarmTestSupport extends AbstractExternalResourceTestSupport<Defaul
         }
     }
 }
+*/

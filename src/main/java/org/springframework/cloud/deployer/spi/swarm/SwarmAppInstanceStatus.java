@@ -14,6 +14,7 @@ import java.util.Map;
 /**
  * Created by joriscaloud on 13/10/16.
  */
+
 public class SwarmAppInstanceStatus implements AppInstanceStatus {
 
     private static Logger logger = LoggerFactory.getLogger(SwarmAppInstanceStatus.class);
