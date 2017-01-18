@@ -265,7 +265,6 @@ public class SwarmAppDeployerTest {
 
         Timeout timeout = launchTimeout();
         launchTimeout();
-        Task task = (Task)swarmAppDeployer.testInformations.get("Task");
         AppStatus appStatus = swarmAppDeployer.status(deploymentId);
         launchTimeout();
         assertThat(appStatus.getState(),

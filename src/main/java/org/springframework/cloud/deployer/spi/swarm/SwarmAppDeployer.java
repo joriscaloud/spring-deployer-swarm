@@ -8,13 +8,10 @@ import com.spotify.docker.client.messages.NetworkConfig;
 import com.spotify.docker.client.messages.NetworkCreation;
 import com.spotify.docker.client.messages.ServiceCreateResponse;
 import com.spotify.docker.client.messages.swarm.*;
-import jnr.ffi.annotations.In;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.deployer.resource.docker.DockerResource;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
-import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 
 import java.io.IOException;
@@ -75,7 +72,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
                 String indexedId = appId + "-" + count;
                 Map<String, String> idMap = createIdMap(appId, request, count);
                 logger.debug("Creating service: {} on {} with index count {}", appId, 0, count);
-                TaskSpec taskSpec = createSimpleTaskSpec(request);
+                TaskSpec taskSpec = createTaskSpec(request);
                 ServiceSpec serviceSpec = null;
                 String networkName = null;
                 if (withNetwork) {
@@ -107,7 +104,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
             else try {
                 Map<String, String> idMap = createIdMap(appId, request, null);
                 logger.debug("Creating service: {} on {}", appId);
-                final TaskSpec taskSpec = createSimpleTaskSpec(request);
+                final TaskSpec taskSpec = createTaskSpec(request);
                 ServiceSpec serviceSpec = null;
                 String networkName = null;
                 if (withNetwork) {
@@ -157,7 +154,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
     }
 
 
-    public void updateReplicasNumber(String appId, int replicas, String networkName) {
+    private void updateReplicasNumber(String appId, int replicas, String networkName) {
         logger.debug("Undeploying app: {}", appId);
         try {
             List<Service> services =
@@ -209,7 +206,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
         }
     }
 
-    public void checkNetworkExistence(String networkName) throws DockerException, InterruptedException {
+    private void checkNetworkExistence(String networkName) throws DockerException, InterruptedException {
         boolean networkAlreadyCreated = false;
         List<Network> listNetwork = client.listNetworks();
         for (Network n : listNetwork) {
@@ -227,7 +224,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
         }
     }
 
-    public void createNetwork(String networkName) throws Exception {
+    private void createNetwork(String networkName) throws Exception {
         final NetworkCreation networkCreation = client
                 .createNetwork(NetworkConfig.builder().driver("overlay")
                         .ipam(Ipam.builder().driver("default").build())
@@ -236,7 +233,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
     }
 
 
-    private TaskSpec createSimpleTaskSpec(AppDeploymentRequest request) {
+    private TaskSpec createTaskSpec(AppDeploymentRequest request) {
         String image = null;
         try {
             image = request.getResource().getURI().getSchemeSpecificPart();
@@ -286,16 +283,6 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
     }
 
 
-    protected int configureExternalPort(final AppDeploymentRequest request) {
-        int externalPort = 0;
-        Map<String, String> parameters = request.getDefinition().getProperties();
-        if (parameters.containsKey(SERVER_PORT_KEY)) {
-            externalPort = Integer.valueOf(parameters.get(SERVER_PORT_KEY));
-        }
-        return externalPort;
-    }
-
-
     @Override
     //we'll assume that there's one container per service
     public AppStatus status(String appId) {
@@ -330,6 +317,15 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
         return status;
     }
 
+    private int configureExternalPort(final AppDeploymentRequest request) {
+        int externalPort = 0;
+        Map<String, String> parameters = request.getDefinition().getProperties();
+        if (parameters.containsKey(SERVER_PORT_KEY)) {
+            externalPort = Integer.valueOf(parameters.get(SERVER_PORT_KEY));
+        }
+        return externalPort;
+    }
+
     private EndpointSpec addEndPointSpec(int port) {
         return EndpointSpec.builder()
                 .withPorts(new PortConfig[]{createSwarmContainerPortConfig(port)})
@@ -337,7 +333,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
 
     }
 
-    public PortConfig createSwarmContainerPortConfig(Integer port) {
+    private PortConfig createSwarmContainerPortConfig(Integer port) {
         PortConfig portConfig = new PortConfig();
         if (port != null) {
             portConfig = PortConfig.builder()
