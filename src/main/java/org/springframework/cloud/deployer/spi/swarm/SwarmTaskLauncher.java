@@ -11,7 +11,7 @@ import org.springframework.cloud.deployer.spi.task.TaskStatus;
 public class SwarmTaskLauncher implements TaskLauncher {
     @Override
     public String launch(AppDeploymentRequest request) {
-        return "not_implement";
+        return "not_implemented";
     }
 
     @Override
