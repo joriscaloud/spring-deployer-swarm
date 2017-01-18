@@ -1,4 +1,4 @@
-#spring-cloud-deployer-swarm
+##spring-cloud-deployer-swarm
 
 The docker-client used in this project can be found there :
 https://github.com/spotify/docker-client
@@ -36,16 +36,16 @@ join the swarm :
 > docker swarm join --token *token*  *interface adress:port*
 
 
-####Customize Your Docker Configuration
+##Customize Your Docker Configuration
 The port on which Docker Swarm daemon can be accessed remotely is supposed to
 be 2375, 2376 or 2377.
-You can chose the Port or add options to your Docker by modifying your 
+You can choose the Port or add options to your Docker by modifying your 
 docker conf in :
 
 /etc/systemd/system/docker.service.d/docker.conf 
 
 For instance, you can choose to run Docker in experimental and debug mode, 
-make the daemon accessible on its socket and on tcp://0.0.0.0:2375 and 
+make the daemon accessible on the docker socket and on tcp://0.0.0.0:2375 and 
 to choose your own registry with the following configuration :
 
 [Service]
@@ -55,15 +55,21 @@ ExecStart=/usr/bin/dockerd --experimental -H unix:///var/run/docker.sock
 
 Replicate this configuration on each node of your Swarm.
 
-#####Run the spring-cloud-deployer-tests
+##Run the tests on a remote Swarm cluster
 This project is configured to run the tests on a remote Docker Swarm
-Cluster.
-The client communicates with the Swarm with HTTP protocol,
-on the http://0.0.0.0:2375 address (cf. SwarmDeployerProperties.class). 
-A connection has to be made with ssh tunnel to a Swarm Manager, 
-the 2375 ports are then bound :
+Cluster. 
 
-> ssh -L 2375:localhost:2375 remote-machine
+You have to define which endpoint is going to receive your deployment
+requests, define the endpoint's URI in the SwarmDeployerProperties.class
+
+Locally : Use the unix docker socket or http://0.0.0.0:2375 for example.
+
+Remotely : Use http://swarm-manager-ip:2375
+
+If a ssh connection has to be made to connect to the swarm manager, 
+bind the rights ports when you do it :
+
+> ssh -L 2375:localhost:2375 swarm-manager-ip
 
 Don't forget to disable Docker locally or your docker client will talk
 to your local docker and not to the remote one through the ssh tunnel,
@@ -77,11 +83,17 @@ Don't forget that in order to deploy containers on multiple hosts from an
 image, all the hosts need to pull the said image before running the 
 service.
 
-###### A few Docker Swarm commands
+### Reminder of a few Docker Swarm commands if you want to check your tests
 
 On your Swarm Manager, list your launched service with :
 
 > docker service ls
+
+Watch dynamically you services deploy and undeploy with :
+
+> watch -n 0,2 docker service ls 
+
+as they deploy and undeploy very quickly 
 
 To detail a specific service :
 

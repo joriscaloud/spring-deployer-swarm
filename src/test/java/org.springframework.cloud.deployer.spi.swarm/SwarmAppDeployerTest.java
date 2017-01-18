@@ -6,6 +6,7 @@ import com.spotify.docker.client.messages.ServiceCreateResponse;
 import com.spotify.docker.client.messages.swarm.Service;
 import com.spotify.docker.client.messages.swarm.Swarm;
 import com.spotify.docker.client.messages.swarm.Task;
+import org.apache.commons.lang.RandomStringUtils;
 import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Before;
@@ -334,7 +335,7 @@ public class SwarmAppDeployerTest {
 
 
     protected String randomName() {
-        return UUID.randomUUID().toString().substring(0,8);
+        return  RandomStringUtils.randomAlphanumeric(8);
     }
 
     /**
