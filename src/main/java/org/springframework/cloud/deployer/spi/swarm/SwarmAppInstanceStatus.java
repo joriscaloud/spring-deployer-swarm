@@ -13,6 +13,8 @@ import java.util.Map;
 
 /**
  * Created by joriscaloud on 13/10/16.
+ * The Spring DeploymentState / Swarm State mapping was simplified
+ * for integration matters
  */
 
 public class SwarmAppInstanceStatus implements AppInstanceStatus {

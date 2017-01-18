@@ -41,26 +41,26 @@ import static org.junit.Assume.assumeTrue;
 import static org.springframework.cloud.deployer.spi.test.EventuallyMatcher.eventually;
 
 /**
- * Created by joriscaloud on 13/10/16.
+ * Created by joriscaloud on 13/10/16
+ * See the README.md to get the right Docker Swarm configuration in order to run these tests
  */
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = SwarmAutoConfiguration.class)
 public class SwarmAppDeployerTest {
-
-    protected final Logger log = LoggerFactory.getLogger(this.getClass());
-
+    
     @Autowired
     private DockerClient defaultDockerClient;
-
-    private SwarmAppDeployer swarmAppDeployer;
-
-    private String dockerApiVersion;
-
-
+    
     @Autowired
     public void setAppDeployer(AppDeployer appDeployer) {
         this.swarmAppDeployer = (SwarmAppDeployer) appDeployer;
     }
+    
+    private SwarmAppDeployer swarmAppDeployer;
+    
+    private String dockerApiVersion;
+    
+    protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
     @Before
     public void setup() throws Exception {

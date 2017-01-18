@@ -6,7 +6,13 @@ https://github.com/spotify/docker-client
 Other Spring Cloud deployers or tools can be found there :
 https://github.com/spring-cloud
 
-## Building
+This project was developed by resuming the architecture of the 
+spring-cloud-deployer-kubernetes.
+It has some features that can be further developed or added, feel free
+to collaborate !
+All the tests are effective using Docker 1.13 RC7 experimental.
+
+## Build the project 
 
 Build the project without running tests using:
 
@@ -22,12 +28,12 @@ https://docs.docker.com/engine/reference/commandline/swarm_init/
 You can run a Swarm on a single node. 
 Initiate the Swarm on the manager node you chose with : 
 
-docker swarm init --advertise-addr *interface address*
+> docker swarm init --advertise-addr *interface address*
 
 It generates a  token that you'll use on your slave nodes in order to 
 join the swarm :
 
-docker swarm join --token *token*  *interface adress:port*
+> docker swarm join --token *token*  *interface adress:port*
 
 
 ####Customize Your Docker Configuration
@@ -57,13 +63,54 @@ on the http://0.0.0.0:2375 address (cf. SwarmDeployerProperties.class).
 A connection has to be made with ssh tunnel to a Swarm Manager, 
 the 2375 ports are then bound :
 
-ssh -L 2375:localhost:2375 remote-machine
+> ssh -L 2375:localhost:2375 remote-machine
 
 Don't forget to disable Docker locally or your docker client will talk
 to your local docker and not to the remote one through the ssh tunnel,
 use the command :
  
-systemctl stop docker
+> systemctl stop docker
 
 Now you're ready to make your own tests !
- 
+
+Don't forget that in order to deploy containers on multiple hosts from an
+image, all the hosts need to pull the said image before running the 
+service.
+
+###### A few Docker Swarm commands
+
+On your Swarm Manager, list your launched service with :
+
+> docker service ls
+
+To detail a specific service :
+
+> docker service ps *service-name* --no-trunc
+
+If you want to access the logs of a specific container, you can get from
+the command above the hosts names on which the different containers of a service
+are running.
+To get the logs of a specific container, log in the host where it's running
+and run :
+> docker ps 
+> docker logs *container-id*
+
+To inspect a service and see if the parameters you passed in the code to
+it are effective :
+
+> docker service inspect *service-name*
+
+Remove a service :
+
+> docker service rm *service-name*
+
+Update (and restart) a service :
+
+> docker service update *service-name* --parameters
+
+A lot of parameters can be passed to this command, see the following 
+link :
+
+https://docs.docker.com/engine/reference/commandline/service_update/
+
+

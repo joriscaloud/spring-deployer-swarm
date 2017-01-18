@@ -21,8 +21,11 @@ import java.util.Map;
 
 /**
  * Created by joriscaloud on 12/10/16.
+ *
+ * Swarm Deployer that implements the Spring Cloud AppDeployer
+ * Used by the Spring Cloud Data Flow Server
  */
-public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeployer{
+public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeployer {
 
     private static final String SERVER_PORT_KEY = "server.port";
 
@@ -40,8 +43,8 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
     public boolean withNetwork = true;
 
     public Map<String, Object> testInformations = new HashMap<String, Object>();
-
-
+    
+    
     @Override
     public String deploy(AppDeploymentRequest request) {
         String appId = createDeploymentId(request);
@@ -206,6 +209,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
         }
     }
 
+    
     private void checkNetworkExistence(String networkName) throws DockerException, InterruptedException {
         boolean networkAlreadyCreated = false;
         List<Network> listNetwork = client.listNetworks();
@@ -224,6 +228,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
         }
     }
 
+    
     private void createNetwork(String networkName) throws Exception {
         final NetworkCreation networkCreation = client
                 .createNetwork(NetworkConfig.builder().driver("overlay")
@@ -243,9 +248,6 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
         final TaskSpec taskSpec =  TaskSpec.builder()
                 .withContainerSpec(ContainerSpec.builder()
                         .withImage(image)
-                        .withEnv("SPRING_OPTS=--registry.client.address="+
-                                request.getDeploymentProperties().get(AppDeployer.GROUP_PROPERTY_KEY)
-                                +"-registry")
                         .build())
                 .withRestartPolicy(RestartPolicy.builder()
                         .withCondition(RestartPolicy.RESTART_POLICY_NONE)
@@ -326,6 +328,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
         return externalPort;
     }
 
+    
     private EndpointSpec addEndPointSpec(int port) {
         return EndpointSpec.builder()
                 .withPorts(new PortConfig[]{createSwarmContainerPortConfig(port)})
@@ -333,6 +336,7 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
 
     }
 
+    
     private PortConfig createSwarmContainerPortConfig(Integer port) {
         PortConfig portConfig = new PortConfig();
         if (port != null) {
@@ -345,6 +349,5 @@ public class SwarmAppDeployer extends AbstractSwarmDeployer implements AppDeploy
         }
         return portConfig;
     }
-
 }
 
