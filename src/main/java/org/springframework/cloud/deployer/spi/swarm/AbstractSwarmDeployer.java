@@ -13,6 +13,8 @@ import java.util.Map;
 
 /**
  * Created by joriscaloud on 12/10/16.
+ *
+ * Abstract base class for a deployer that targets Docker Swarm
  */
 public class AbstractSwarmDeployer {
 
@@ -21,10 +23,7 @@ public class AbstractSwarmDeployer {
     protected static final String SPRING_APP_KEY = "spring-app-id";
     protected static final String SPRING_MARKER_KEY = "role";
     protected static final String SPRING_MARKER_VALUE = "spring-app";
-
     protected static final Logger logger = LoggerFactory.getLogger(AbstractSwarmDeployer.class);
-
-
 
     /**
      * Creates a map of labels for a given ID. This will allow Swarm services
@@ -55,8 +54,7 @@ public class AbstractSwarmDeployer {
         }
         return deploymentId.replace('.', '-');
     }
-
-
+    
     protected AppStatus buildAppStatus(SwarmDeployerProperties properties, String appId, Task task) {
         AppStatus.Builder statusBuilder = AppStatus.of(appId);
 

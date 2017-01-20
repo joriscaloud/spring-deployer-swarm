@@ -6,20 +6,15 @@ import java.net.URI;
 
 /**
  * Created by joriscaloud on 12/10/16.
+ * Properties for the containers
  */
 @ConfigurationProperties(prefix = "spring.cloud.deployer.swarm")
 public class SwarmDeployerProperties {
-
-
+    
     public URI getURI(){
         return (URI.create("http://127.0.0.1:2375"));
             }
-
-    /**
-     * Environment variables to set for any deployed app container. To be used for service binding.
-     */
-    private String[] environmentVariables = new String[]{};
-
+    
     /**
      * Memory to allocate for a service
      */
@@ -29,7 +24,6 @@ public class SwarmDeployerProperties {
      * CPU to allocate for a service
      */
     private Long cpu = 500L;
-
 
     public void setCpu(Long cpu) {
         this.cpu = cpu;
@@ -46,16 +40,5 @@ public class SwarmDeployerProperties {
     public void setMemory(Long memory) {
         this.memory = memory;
     }
-
-
-    public String[] getEnvironmentVariables() {
-        return environmentVariables;
-    }
-
-    public void setEnvironmentVariables(String[] environmentVariables) {
-        this.environmentVariables = environmentVariables;
-    }
-
-
 
 }

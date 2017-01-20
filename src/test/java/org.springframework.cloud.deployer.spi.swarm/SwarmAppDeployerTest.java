@@ -6,6 +6,7 @@ import com.spotify.docker.client.messages.ServiceCreateResponse;
 import com.spotify.docker.client.messages.swarm.Service;
 import com.spotify.docker.client.messages.swarm.Swarm;
 import com.spotify.docker.client.messages.swarm.Task;
+import org.apache.commons.lang.RandomStringUtils;
 import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Before;
@@ -41,26 +42,26 @@ import static org.junit.Assume.assumeTrue;
 import static org.springframework.cloud.deployer.spi.test.EventuallyMatcher.eventually;
 
 /**
- * Created by joriscaloud on 13/10/16.
+ * Created by joriscaloud on 13/10/16
+ * See the README.md to get the right Docker Swarm configuration in order to run these tests
  */
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = SwarmAutoConfiguration.class)
 public class SwarmAppDeployerTest {
-
-    protected final Logger log = LoggerFactory.getLogger(this.getClass());
-
+    
     @Autowired
     private DockerClient defaultDockerClient;
-
-    private SwarmAppDeployer swarmAppDeployer;
-
-    private String dockerApiVersion;
-
-
+    
     @Autowired
     public void setAppDeployer(AppDeployer appDeployer) {
         this.swarmAppDeployer = (SwarmAppDeployer) appDeployer;
     }
+    
+    private SwarmAppDeployer swarmAppDeployer;
+    
+    private String dockerApiVersion;
+    
+    protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
     @Before
     public void setup() throws Exception {
@@ -74,27 +75,29 @@ public class SwarmAppDeployerTest {
         List<Service> services = defaultDockerClient.listServices();
 
         services.forEach(service -> {
-                    try {
-                        defaultDockerClient.removeService(service.id());
-                    } catch (InterruptedException | DockerException e) {
-                        e.printStackTrace();
-                    }
+            try {
+                defaultDockerClient.removeService(service.id());
+            } catch (InterruptedException | DockerException e) {
+                e.printStackTrace();
+            }
 
-                });
+        });
+        if (swarmAppDeployer.withNetwork) {
+            defaultDockerClient.removeNetwork("swarm-app-deployer-network-test");
+        }
         launchTimeout();
     }
 
     @Test
-    public void testDeployUndeploy() throws Exception {
+    public void testDeployUndeploySingleTaskService() throws Exception {
         log.info("Testing {}...", "a simple deployment with the swarm");
         AppDefinition definition = new AppDefinition(randomName(), null);
-        Resource resource = integrationTestProcessor();
+        Resource resource = firstDockerResource();
         AppDeploymentRequest request = new AppDeploymentRequest(definition, resource);
         log.info("Deploying {}...", request.getDefinition().getName());
         String deploymentId =  swarmAppDeployer.deploy(request);
         Timeout timeout = deploymentTimeout();
-        Task task = (Task) swarmAppDeployer.testInformations.get("Task");
-        AppStatus appStatus = swarmAppDeployer.status(task.id(), task);
+        AppStatus appStatus = swarmAppDeployer.status(deploymentId);
         launchTimeout();
         assertThat(appStatus.getState(), eventually(Matchers.<DeploymentState>anyOf(is(DeploymentState.deployed), is(DeploymentState.deploying)), timeout.maxAttempts, timeout.pause));
 
@@ -108,7 +111,7 @@ public class SwarmAppDeployerTest {
     public void testDeployUndeployTwoDifferentImages() throws Exception {
         log.info("Testing the  deployment of two different images in the swarm");
         AppDefinition firstDefinition = new AppDefinition(randomName(), null);
-        Resource firstResource = integrationTestProcessor();
+        Resource firstResource = firstDockerResource();
         AppDeploymentRequest firstRequest = new AppDeploymentRequest(firstDefinition, firstResource);
         log.info("Deploying {}...", firstRequest.getDefinition().getName());
         String firstDeploymentId =  swarmAppDeployer.deploy(firstRequest);
@@ -119,7 +122,7 @@ public class SwarmAppDeployerTest {
         assertThat(firstAppStatus.getState(), eventually(Matchers.<DeploymentState>anyOf(is(DeploymentState.deployed), is(DeploymentState.deploying)), timeout.maxAttempts, timeout.pause));
 
         AppDefinition secondDefinition = new AppDefinition(randomName(), null);
-        Resource secondResource = otherIntegrationTestProcessor();
+        Resource secondResource = secondDockerResource();
         AppDeploymentRequest secondRequest = new AppDeploymentRequest(secondDefinition, secondResource);
         log.info("Deploying {}...", secondRequest.getDefinition().getName());
         String secondDeploymentId =  swarmAppDeployer.deploy(secondRequest);
@@ -137,10 +140,10 @@ public class SwarmAppDeployerTest {
     }
 
     @Test
-    public void testDeployUndeployIndexedApps() throws Exception {
+    public void testDeployUndeployMultipleTasksService() throws Exception {
         log.info("Testing {}...", "a simple deployment with the swarm");
         AppDefinition definition = new AppDefinition(randomName(), null);
-        Resource resource = integrationTestProcessor();
+        Resource resource = firstDockerResource();
 
         int count = 10;
         Map<String, String> properties = new HashMap<>();
@@ -153,12 +156,12 @@ public class SwarmAppDeployerTest {
         Timeout timeout = deploymentTimeout();
         launchTimeout();
         for (int index = 0; index<count; index++) {
-                Task task = (Task)swarmAppDeployer.testInformations.get("Task " + index);
-                AppStatus appStatus = swarmAppDeployer.status(deploymentId, task);
-                assertThat(appStatus.getState(), eventually
-                                        (Matchers.<DeploymentState>anyOf
-                                        (is(DeploymentState.deployed), is(DeploymentState.deploying)),
-                                        timeout.maxAttempts, timeout.pause));
+            Task task = (Task)swarmAppDeployer.testInformations.get("Task " + index);
+            AppStatus appStatus = swarmAppDeployer.status(deploymentId, task);
+            assertThat(appStatus.getState(), eventually
+                    (Matchers.<DeploymentState>anyOf
+                                    (is(DeploymentState.deployed), is(DeploymentState.deploying)),
+                            timeout.maxAttempts, timeout.pause));
         }
 
         log.info("Undeploying {}...", deploymentId);
@@ -171,18 +174,18 @@ public class SwarmAppDeployerTest {
     public void testAddOneReplicaToService() throws Exception {
         log.info("Testing {}...", "adding a replicas to a swarm service");
         AppDefinition definition = new AppDefinition(randomName(), null);
-        Resource resource = integrationTestProcessor();
+        Resource resource = firstDockerResource();
         AppDeploymentRequest request = new AppDeploymentRequest(definition, resource);
         log.info("Deploying {}...", request.getDefinition().getName());
         String deploymentId =  swarmAppDeployer.deploy(request);
         Timeout timeout = deploymentTimeout();
         launchTimeout();
         assertThat(defaultDockerClient
-                    .inspectService(((ServiceCreateResponse)swarmAppDeployer.testInformations.get("Last Response")).id())
-                    .spec()
-                    .mode()
-                    .replicated()
-                    .replicas(), is(1L));
+                .inspectService(((ServiceCreateResponse)swarmAppDeployer.testInformations.get("Last Response")).id())
+                .spec()
+                .mode()
+                .replicated()
+                .replicas(), is(1L));
         log.info("first container :  {}", defaultDockerClient.inspectTask(((Task)swarmAppDeployer.testInformations.get("Task")).id()));
         log.info("Service logging :  {}", defaultDockerClient.inspectService(deploymentId));
 
@@ -190,21 +193,21 @@ public class SwarmAppDeployerTest {
         swarmAppDeployer.updateReplicasNumber(deploymentId, 2);
         launchTimeout();
         assertThat(defaultDockerClient
-                    .inspectService(((ServiceCreateResponse)swarmAppDeployer.testInformations.get("Last Response")).id())
-                    .spec()
-                    .mode()
-                    .replicated()
-                    .replicas(), is(2L));
+                .inspectService(((ServiceCreateResponse)swarmAppDeployer.testInformations.get("Last Response")).id())
+                .spec()
+                .mode()
+                .replicated()
+                .replicas(), is(2L));
         log.info("Two containers :  {}", defaultDockerClient.inspectService(((ServiceCreateResponse)swarmAppDeployer.testInformations.get("Last Response")).id()));
         log.info("Service logging :  {}", defaultDockerClient.inspectService(deploymentId));
 
         launchTimeout();
         Task task = (Task)swarmAppDeployer.testInformations.get("Task");
-        AppStatus appStatus = swarmAppDeployer.status(task.id(), task);
+        AppStatus appStatus = swarmAppDeployer.status(deploymentId, task);
         launchTimeout();
         assertThat(appStatus.getState(), eventually
-                        (Matchers.<DeploymentState>
-                        anyOf(is(DeploymentState.deployed), is(DeploymentState.deploying)),
+                (Matchers.<DeploymentState>
+                                anyOf(is(DeploymentState.deployed), is(DeploymentState.deploying)),
                         timeout.maxAttempts, timeout.pause));
 
     }
@@ -217,21 +220,19 @@ public class SwarmAppDeployerTest {
         properties.put("killDelay", "10");
         properties.put("exitCode", "1");
         AppDefinition definition = new AppDefinition(this.randomName(), properties);
-        Resource resource = integrationTestProcessor();
+        Resource resource = firstDockerResource();
         AppDeploymentRequest request = new AppDeploymentRequest(definition, resource);
         log.info("Launching {}...", request.getDefinition().getName());
         String deploymentId = swarmAppDeployer.deploy(request);
         log.info("Launched {} ", deploymentId);
         Timeout timeout = deploymentTimeout();
         launchTimeout();
-
-        Task task = (Task)swarmAppDeployer.testInformations.get("Task");
-        AppStatus appStatus = swarmAppDeployer.status(task.id(), task);
+        AppStatus appStatus = swarmAppDeployer.status(deploymentId);
         launchTimeout();
         assertThat(appStatus.getState(), eventually
-                                (Matchers.<DeploymentState>
+                (Matchers.<DeploymentState>
                                 anyOf(is(DeploymentState.deployed), is(DeploymentState.deploying)),
-                                timeout.maxAttempts, timeout.pause));
+                        timeout.maxAttempts, timeout.pause));
     }
 
     @Test
@@ -256,7 +257,7 @@ public class SwarmAppDeployerTest {
         Map<String, String> properties = new HashMap<>();
         properties.put("killDelay", "1000");
         AppDefinition definition = new AppDefinition(this.randomName(), properties);
-        Resource resource = integrationTestProcessor();
+        Resource resource = firstDockerResource();
         AppDeploymentRequest request = new AppDeploymentRequest(definition, resource, Collections.emptyMap(),
                 Collections.singletonList("--exitCode=0"));
         log.info("Launching {}...", request.getDefinition().getName());
@@ -265,13 +266,12 @@ public class SwarmAppDeployerTest {
 
         Timeout timeout = launchTimeout();
         launchTimeout();
-        Task task = (Task)swarmAppDeployer.testInformations.get("Task");
-        AppStatus appStatus = swarmAppDeployer.status(task.id(), task);
+        AppStatus appStatus = swarmAppDeployer.status(deploymentId);
         launchTimeout();
         assertThat(appStatus.getState(),
-                            eventually(Matchers.<DeploymentState>
-                            anyOf(is(DeploymentState.deployed), is(DeploymentState.deploying)),
-                            timeout.maxAttempts, timeout.pause));
+                eventually(Matchers.<DeploymentState>
+                                anyOf(is(DeploymentState.deployed), is(DeploymentState.deploying)),
+                        timeout.maxAttempts, timeout.pause));
 
     }
 
@@ -282,15 +282,15 @@ public class SwarmAppDeployerTest {
 
         swarmAppDeployer.withNetwork = true;
         log.info("Testing {}...", "a simple deployment with the swarm");
+        Map<String, String> properties = new HashMap<String, String>();
+        properties.put(AppDeployer.GROUP_PROPERTY_KEY, "swarm-app-deployer-network-test");
         AppDefinition definition = new AppDefinition(randomName(), null);
-        Resource resource = integrationTestProcessor();
-        AppDeploymentRequest request = new AppDeploymentRequest(definition, resource);
+        Resource resource = firstDockerResource();
+        AppDeploymentRequest request = new AppDeploymentRequest(definition, resource, properties);
         log.info("Deploying {}...", request.getDefinition().getName());
         String deploymentId =  swarmAppDeployer.deploy(request);
         launchTimeout();
-        final Service inspectService = defaultDockerClient.inspectService(deploymentId);
-        assertThat(inspectService.spec().networks().size(), is(1));
-
+        assertThat(defaultDockerClient.inspectService(deploymentId).spec().networks().size(), is(1));
     }
 
 
@@ -321,12 +321,12 @@ public class SwarmAppDeployerTest {
         }
     }
 
-    protected Resource integrationTestProcessor() {
+    protected Resource firstDockerResource() {
         return new DockerResource("springcloud/spring-cloud-deployer-spi-test-app:latest");
     }
 
-    protected Resource otherIntegrationTestProcessor() {
-        return new DockerResource("testsource");
+    protected Resource secondDockerResource() {
+        return new DockerResource("hellow-world");
     }
 
     protected Timeout launchTimeout() {
@@ -335,7 +335,7 @@ public class SwarmAppDeployerTest {
 
 
     protected String randomName() {
-        return UUID.randomUUID().toString();
+        return  RandomStringUtils.randomAlphanumeric(8);
     }
 
     /**
