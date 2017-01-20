@@ -1,4 +1,4 @@
-##spring-cloud-deployer-swarm
+## Spring-cloud-deployer-swarm
 
 The docker-client used in this project can be found there :
 https://github.com/spotify/docker-client
