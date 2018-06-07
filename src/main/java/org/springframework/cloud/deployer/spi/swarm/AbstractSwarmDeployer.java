@@ -1,11 +1,8 @@
 package org.springframework.cloud.deployer.spi.swarm;
 
-
-import com.spotify.docker.client.messages.swarm.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
-import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 
 import java.util.HashMap;
@@ -13,7 +10,7 @@ import java.util.Map;
 
 /**
  * Created by joriscaloud on 12/10/16.
- *
+ * <p>
  * Abstract base class for a deployer that targets Docker Swarm
  */
 public class AbstractSwarmDeployer {
@@ -23,7 +20,7 @@ public class AbstractSwarmDeployer {
     protected static final String SPRING_APP_KEY = "spring-app-id";
     protected static final String SPRING_MARKER_KEY = "role";
     protected static final String SPRING_MARKER_VALUE = "spring-app";
-    protected static final Logger logger = LoggerFactory.getLogger(AbstractSwarmDeployer.class);
+    protected static final Logger logger = LoggerFactory.getLogger(AbstractSwarmDeployer.class); // CHECKSTYLE_IGNORE
 
     /**
      * Creates a map of labels for a given ID. This will allow Swarm services
@@ -48,36 +45,26 @@ public class AbstractSwarmDeployer {
         String deploymentId;
         if (groupId == null) {
             deploymentId = String.format("%s", request.getDefinition().getName());
-        }
-        else {
+        } else {
             deploymentId = String.format("%s-%s", groupId, request.getDefinition().getName());
         }
         return deploymentId.replace('.', '-');
     }
-    
-    protected AppStatus buildAppStatus(SwarmDeployerProperties properties, String appId, Task task) {
-        AppStatus.Builder statusBuilder = AppStatus.of(appId);
-
-        statusBuilder.with(new SwarmAppInstanceStatus(properties, appId, task));
-        return statusBuilder.build();
-    }
 
     protected Map<String, Long> deduceResourceLimits(SwarmDeployerProperties properties, AppDeploymentRequest request) {
         String memOverride = request.getDeploymentProperties().get("spring.cloud.deployer.swarm.memory");
-        Long memory = null;
+        Long memory;
         if (memOverride == null) {
             memory = properties.getMemory();
-        }
-        else {
+        } else {
             memory = Long.parseLong(memOverride, 10);
         }
 
         String cpuOverride = request.getDeploymentProperties().get("spring.cloud.deployer.swarm.cpu");
-        Long cpu = null;
+        Long cpu;
         if (cpuOverride == null) {
             cpu = properties.getCpu();
-        }
-        else {
+        } else {
             cpu = Long.parseLong(cpuOverride, 10);
         }
 
@@ -88,5 +75,4 @@ public class AbstractSwarmDeployer {
         limits.put("cpu", cpu);
         return limits;
     }
-
 }

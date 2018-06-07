@@ -13,10 +13,8 @@ import java.util.Map;
 
 /**
  * Created by joriscaloud on 13/10/16.
- * The Spring DeploymentState / Swarm State mapping was simplified
- * for integration matters
+ * The Spring DeploymentState / Swarm State mapping was simplified for integration matters
  */
-
 public class SwarmAppInstanceStatus implements AppInstanceStatus {
 
     private static Logger logger = LoggerFactory.getLogger(SwarmAppInstanceStatus.class);
@@ -32,22 +30,19 @@ public class SwarmAppInstanceStatus implements AppInstanceStatus {
         this.appId = appId;
         this.task = task;
         if (task != null) {
-
-            this.taskStatus = task.status();
-            this.containerStatus = taskStatus.containerStatus();
+            taskStatus = task.status();
+            containerStatus = taskStatus.containerStatus();
         }
-        this.deploymentState = getState();
-
+        deploymentState = getState();
     }
 
     public String getId() {
-        return String.format("%s", appId);
+        return String.format("%s-%s", appId, null != task ? task.id() : "0");
     }
 
     public DeploymentState getState() {
         return taskStatus != null ? mapState() : DeploymentState.unknown;
     }
-
 
     /**
      * Maps SWARM phases/states onto Spring Cloud Deployer states
@@ -55,7 +50,6 @@ public class SwarmAppInstanceStatus implements AppInstanceStatus {
     private DeploymentState mapState() {
         logger.debug("{} - ContainerStatus [ {} ]", taskStatus.containerStatus());
         switch (task.status().state()) {
-
             case TaskStatus.TASK_STATE_NEW:
                 return DeploymentState.deploying;
 
@@ -89,7 +83,6 @@ public class SwarmAppInstanceStatus implements AppInstanceStatus {
             case TaskStatus.TASK_STATE_RUNNING:
                 return DeploymentState.deployed;
 
-
             case TaskStatus.TASK_STATE_ALLOCATED:
                 return DeploymentState.deployed;
 
@@ -103,13 +96,10 @@ public class SwarmAppInstanceStatus implements AppInstanceStatus {
 
         if (containerStatus != null) {
             result.put("container_id", containerStatus.containerId());
-
         }
-;
         if (taskStatus != null && containerStatus.exitCode() != null) {
             result.put("container_last_termination_exit_code", "" + containerStatus.exitCode());
         }
         return result;
     }
-
 }
