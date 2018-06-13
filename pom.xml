@@ -10,26 +10,35 @@
     <parent>
         <groupId>org.springframework.cloud</groupId>
         <artifactId>spring-cloud-deployer-parent</artifactId>
-        <version>1.0.2.RELEASE</version>
+        <version>1.3.1.RELEASE</version>
     </parent>
 
     <properties>
         <java.version>1.8</java.version>
-        <spring-cloud-deployer-spi.version>1.0.2.RELEASE</spring-cloud-deployer-spi.version>
+        <spring-cloud-deployer-spi.version>1.3.1.RELEASE</spring-cloud-deployer-spi.version>
+        <spring-boot-version>1.5.6.RELEASE</spring-boot-version>
     </properties>
 
-    <distributionManagement>
-        <snapshotRepository>
-            <id>kazan-repo</id>
-            <name>Kazan repository</name>
-            <url>https://kazan.atosworldline.com/nexus/content/repositories/snapshots/</url>
-        </snapshotRepository>
-    </distributionManagement>
 
     <dependencies>
         <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>LATEST</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-deployer-spi</artifactId>
+            <version>${spring-cloud-deployer-spi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-deployer-resource-support</artifactId>
+            <version>${spring-cloud-deployer-spi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-deployer-resource-maven</artifactId>
             <version>${spring-cloud-deployer-spi.version}</version>
         </dependency>
         <dependency>
@@ -40,11 +49,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
+            <version>${spring-boot-version}</version>
         </dependency>
         <dependency>
             <groupId>com.spotify</groupId>
             <artifactId>docker-client</artifactId>
-            <version>6.2.6-SNAPSHOT</version>
+            <version>8.11.1</version>
         </dependency>
         <dependency>
             <groupId>org.zeromq</groupId>
@@ -52,10 +62,9 @@
             <version>0.3.5</version>
         </dependency>
         <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-deployer-spi-test</artifactId>
-            <version>${spring-cloud-deployer-spi.version}</version>
-            <scope>test</scope>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -65,17 +74,36 @@
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-stream-test-support-internal</artifactId>
+            <version>1.3.0.RELEASE</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-deployer-local</artifactId>
-            <version>1.1.2.BUILD-SNAPSHOT</version>
+            <artifactId>spring-cloud-deployer-spi-test</artifactId>
+            <version>${spring-cloud-deployer-spi.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.zeromq</groupId>
-            <artifactId>jeromq</artifactId>
-            <version>0.3.5</version>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.hsqldb</groupId>
+            <artifactId>hsqldb</artifactId>
+            <version>2.4.0</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.7.0</version>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>

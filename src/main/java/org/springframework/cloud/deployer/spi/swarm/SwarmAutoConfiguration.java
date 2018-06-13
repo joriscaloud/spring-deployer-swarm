@@ -6,11 +6,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigureOrder;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cloud.deployer.resource.docker.DockerResourceLoader;
+import org.springframework.cloud.deployer.resource.maven.MavenResourceLoader;
+import org.springframework.cloud.deployer.resource.support.DelegatingResourceLoader;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
+import org.springframework.core.io.ResourceLoader;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by joriscaloud on 13/10/16.
@@ -24,8 +31,19 @@ public class SwarmAutoConfiguration {
     private SwarmDeployerProperties properties;
 
     @Bean
+    public DelegatingResourceLoader delegatingResourceLoader() {
+        DockerResourceLoader dockerLoader = new DockerResourceLoader();
+        MavenResourceLoader mavenResourceLoader = new MavenResourceLoader(properties.getMavenProperties());
+        Map<String, ResourceLoader> loaders = new HashMap<>();
+        loaders.put("docker", dockerLoader);
+        loaders.put("maven", mavenResourceLoader);
+        return new DelegatingResourceLoader(loaders);
+    }
+
+
+    @Bean
     public DockerClient defaultDockerClient() {
-        return new DefaultDockerClient(properties.getURI());
+        return new DefaultDockerClient(properties.getDockerURI());
     }
 
     @Bean

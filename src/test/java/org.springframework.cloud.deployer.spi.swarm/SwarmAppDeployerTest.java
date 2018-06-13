@@ -15,6 +15,7 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.deployer.resource.docker.DockerResource;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
@@ -29,13 +30,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import static com.spotify.docker.client.VersionCompare.compareVersion;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.isEmptyOrNullString;
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
@@ -46,6 +43,7 @@ import static org.springframework.cloud.deployer.spi.test.EventuallyMatcher.even
  * See the README.md to get the right Docker Swarm configuration in order to run these tests
  */
 @RunWith(SpringJUnit4ClassRunner.class)
+@SpringBootTest
 @ContextConfiguration(classes = SwarmAutoConfiguration.class)
 public class SwarmAppDeployerTest {
     
@@ -66,7 +64,6 @@ public class SwarmAppDeployerTest {
     @Before
     public void setup() throws Exception {
         dockerApiVersion = defaultDockerClient.version().apiVersion();
-        swarmAppDeployer.testing = true;
         swarmAppDeployer.withNetwork = false;
     }
 
